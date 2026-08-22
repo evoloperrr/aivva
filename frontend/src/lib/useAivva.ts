@@ -42,27 +42,16 @@ export function useAivvaLive() {
     if (!current) return;
     const id = window.setInterval(async () => {
       try {
-        const due =
-          current.status !== "PAUSED" &&
-          current.status !== "DORMANT" &&
-          current.goal &&
-          (!current.next_scheduled_at || new Date(current.next_scheduled_at).getTime() <= Date.now());
-        if (due) {
-          const ticked = await aivvas.tick(current.id);
-          setCurrent(ticked.data);
-        } else {
-          const fresh = await aivvas.get(current.id);
-          setCurrent(fresh.data);
-        }
-        const [feed, worldMap] = await Promise.all([aivvas.activity(current.id), world.map()]);
-        setActivity(feed.data);
-        setMap(worldMap);
+        const live = await aivvas.live(current.id);
+        setCurrent(live.data);
+        setActivity(live.activity);
+        setMap(await world.map());
       } catch (err) {
         setError(err instanceof Error ? err.message : "Live update failed");
       }
-    }, 2500);
+    }, 2800);
     return () => window.clearInterval(id);
-  }, [current?.id, current?.status, current?.next_scheduled_at, current?.goal]);
+  }, [current?.id]);
 
   const loadMarket = useCallback(async () => {
     setMarket(await world.marketplace());

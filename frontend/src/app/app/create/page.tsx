@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Portrait } from "@/components/brand/Portrait";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,10 +10,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { aivvas } from "@/lib/api";
 
 const skillOptions = ["music", "writing", "design", "research", "teaching", "illustration"];
+const workOptions = ["ethical work", "solo making", "collaboration", "teaching others", "quiet research"];
+const portraits = ["lantern", "tide", "violet-garden", "amber-court", "river-glass", "dusk-market"];
 
 export default function CreateAivvaPage() {
   const router = useRouter();
+  const [name, setName] = useState("LUNA");
   const [skills, setSkills] = useState<string[]>(["music"]);
+  const [work, setWork] = useState<string[]>(["ethical work"]);
+  const [portrait, setPortrait] = useState("lantern");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -26,13 +32,16 @@ export default function CreateAivvaPage() {
         const form = new FormData(event.currentTarget);
         try {
           await aivvas.create({
-            name: String(form.get("name")),
+            name,
             personality: String(form.get("personality")),
+            bio: String(form.get("bio")),
             interests: String(form.get("interests"))
               .split(",")
               .map((s) => s.trim())
               .filter(Boolean),
             skills,
+            work_preferences: work,
+            portrait_seed: portrait,
             risk_tolerance: String(form.get("risk_tolerance")),
             autonomy_level: Number(form.get("autonomy_level")),
             max_per_transaction: Number(form.get("max_per_transaction")),
@@ -54,9 +63,32 @@ export default function CreateAivvaPage() {
         </p>
       </div>
 
+      <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-card/50 p-4">
+        <Portrait name={name || "A"} seed={portrait} size={72} />
+        <div className="min-w-0">
+          <p className="font-heading text-2xl">{name || "Unnamed"}</p>
+          <p className="text-sm text-muted-foreground">{skills.join(" · ") || "no skills yet"}</p>
+        </div>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" defaultValue="LUNA" required maxLength={40} />
+        <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} />
+      </div>
+      <div className="space-y-2">
+        <Label>Portrait</Label>
+        <div className="flex flex-wrap gap-2">
+          {portraits.map((seed) => (
+            <button
+              type="button"
+              key={seed}
+              onClick={() => setPortrait(seed)}
+              className={`rounded-full px-3 py-1 text-sm ${portrait === seed ? "bg-teal text-ink" : "bg-white/5 text-muted-foreground"}`}
+            >
+              {seed}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="personality">Personality</Label>
@@ -65,6 +97,15 @@ export default function CreateAivvaPage() {
           name="personality"
           defaultValue="Warm, precise, and unwilling to deceive anyone for a profit."
           rows={3}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="bio">How they see the city</Label>
+        <Textarea
+          id="bio"
+          name="bio"
+          defaultValue="Would rather make something honest than win a noisy market."
+          rows={2}
         />
       </div>
       <div className="space-y-2">
@@ -80,6 +121,24 @@ export default function CreateAivvaPage() {
                 className={`rounded-full px-3 py-1 text-sm ${on ? "bg-teal text-ink" : "bg-white/5 text-muted-foreground"}`}
               >
                 {skill}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Work preferences</Label>
+        <div className="flex flex-wrap gap-2">
+          {workOptions.map((item) => {
+            const on = work.includes(item);
+            return (
+              <button
+                type="button"
+                key={item}
+                onClick={() => setWork((prev) => (on ? prev.filter((s) => s !== item) : [...prev, item]))}
+                className={`rounded-full px-3 py-1 text-sm ${on ? "bg-amber text-ink" : "bg-white/5 text-muted-foreground"}`}
+              >
+                {item}
               </button>
             );
           })}

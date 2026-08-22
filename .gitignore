@@ -12,3 +12,4 @@ backend/storage/framework/views/
 backend/bootstrap/cache/*.php
 frontend/node_modules/
 frontend/.next/
+dump.rdb

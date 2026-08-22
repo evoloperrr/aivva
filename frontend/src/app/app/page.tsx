@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ActivityFeed } from "@/components/aivva/ActivityFeed";
+import { OwnerChat } from "@/components/aivva/OwnerChat";
 import { Portrait } from "@/components/brand/Portrait";
 import { LivingMap } from "@/components/world/LivingMap";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -228,6 +229,16 @@ export default function CommandPage() {
             items={activity}
             empty={`${current.name} is waiting for a confirmed direction.`}
           />
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-card/70 p-5">
+        <h2 className="font-heading text-2xl">Talk with {current.name}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Ask where they are. Chat cannot spend credits or replace a confirmed direction.
+        </p>
+        <div className="mt-4">
+          <OwnerChat aivvaId={current.id} name={current.name} />
         </div>
       </section>
     </div>

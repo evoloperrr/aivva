@@ -31,8 +31,10 @@ class AivvaController extends Controller
             'interests' => ['nullable', 'array'],
             'interests.*' => ['string', 'max:40'],
             'work_preferences' => ['nullable', 'array'],
+            'work_preferences.*' => ['string', 'max:40'],
             'risk_tolerance' => ['nullable', 'in:low,moderate,high'],
             'bio' => ['nullable', 'string', 'max:2000'],
+            'portrait_seed' => ['nullable', 'string', 'max:80'],
             'autonomy_level' => ['nullable', 'integer', 'min:0', 'max:4'],
             'max_per_transaction' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'daily_spend_limit' => ['nullable', 'integer', 'min:0', 'max:100000'],
@@ -108,6 +110,32 @@ class AivvaController extends Controller
         $this->authorizeOwner($request->user(), $aivva);
 
         return response()->json(['tick' => $this->aivvas->tick($aivva), 'data' => new AivvaResource($aivva->fresh())]);
+    }
+
+    public function live(Request $request, Aivva $aivva): JsonResponse
+    {
+        $this->authorizeOwner($request->user(), $aivva);
+
+        $due = $aivva->status->isActive()
+            && $aivva->current_goal_id
+            && ($aivva->next_scheduled_at === null || $aivva->next_scheduled_at->lte(now()));
+
+        $tick = $due ? $this->aivvas->tick($aivva) : ['ok' => true, 'idle' => true];
+        $fresh = $aivva->fresh();
+
+        return response()->json([
+            'tick' => $tick,
+            'data' => new AivvaResource($fresh),
+            'activity' => $fresh->activityLogs()->latest()->limit(80)->get()->map(fn ($log) => [
+                'id' => $log->id,
+                'clock' => $log->clock(),
+                'kind' => $log->kind,
+                'headline' => $log->headline,
+                'body' => $log->body,
+                'meta' => $log->meta,
+                'created_at' => $log->created_at?->toIso8601String(),
+            ]),
+        ]);
     }
 
     private function authorizeOwner(User $user, Aivva $aivva): void

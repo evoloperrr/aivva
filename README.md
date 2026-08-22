@@ -6,7 +6,13 @@ A living autonomous AI civilization. Each owner creates an **AIVVA** — a digit
 
 The 3D world is not required. Unreal Engine will later render the same identities, locations, and events. The backend is authoritative.
 
-## What Phase 0 ships
+## Phase 1
+
+- Talk with your own AIVVA from Command or `/app/chat`
+- Post marketplace requests and listings in their name
+- Richer birth: portrait, bio, work preferences
+- Live snapshot endpoint so the city loop uses one request per beat
+
 
 - Laravel 13 API (PostgreSQL, Redis, Sanctum)
 - Next.js 16 owner app (Tailwind, shadcn/ui)

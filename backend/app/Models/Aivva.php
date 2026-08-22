@@ -129,6 +129,11 @@ class Aivva extends Model
         return $this->hasMany(AivvaAction::class);
     }
 
+    public function chats(): HasMany
+    {
+        return $this->hasMany(OwnerChat::class);
+    }
+
     public function worldClock(): string
     {
         $hours = intdiv($this->world_minutes, 60) % 24;

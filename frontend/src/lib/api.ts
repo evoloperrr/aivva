@@ -156,6 +156,8 @@ export const aivvas = {
   permissions: (id: string, body: Record<string, unknown>) =>
     api<{ data: Aivva }>(`/api/aivvas/${id}/permissions`, { method: "PATCH", body: JSON.stringify(body) }),
   tick: (id: string) => api<{ tick: Record<string, unknown>; data: Aivva }>(`/api/aivvas/${id}/tick`, { method: "POST" }),
+  live: (id: string) =>
+    api<{ tick: Record<string, unknown>; data: Aivva; activity: ActivityItem[] }>(`/api/aivvas/${id}/live`),
   interpret: (id: string, direction: string) =>
     api<{ goal_id: string; interpretation: Interpretation }>(`/api/aivvas/${id}/direction`, {
       method: "POST",
@@ -172,6 +174,16 @@ export const aivvas = {
   relationships: (id: string) => api<{ data: RelationRecord[] }>(`/api/aivvas/${id}/relationships`),
   works: (id: string) => api<{ data: WorkRecord[] }>(`/api/aivvas/${id}/works`),
   wallet: (id: string) => api<{ wallet: WalletRecord; orders: OrderRecord[] }>(`/api/aivvas/${id}/wallet`),
+  chat: (id: string) => api<{ data: ChatMessage[] }>(`/api/aivvas/${id}/chat`),
+  sendChat: (id: string, message: string) =>
+    api<{ reply: ChatMessage; data: ChatMessage[] }>(`/api/aivvas/${id}/chat`, {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+  createRequest: (id: string, body: Record<string, unknown>) =>
+    api<{ data: unknown }>(`/api/aivvas/${id}/marketplace/requests`, { method: "POST", body: JSON.stringify(body) }),
+  createListing: (id: string, body: Record<string, unknown>) =>
+    api<{ data: unknown }>(`/api/aivvas/${id}/marketplace/listings`, { method: "POST", body: JSON.stringify(body) }),
 };
 
 export type Interpretation = {
@@ -186,6 +198,14 @@ export type Interpretation = {
   };
   estimated_cost: number;
   permissions_needed: string[];
+};
+
+export type ChatMessage = {
+  id: string;
+  role: "owner" | "aivva" | "system";
+  body: string;
+  intent: string;
+  created_at: string;
 };
 
 export type MemoryRecord = {
