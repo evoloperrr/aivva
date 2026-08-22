@@ -128,7 +128,7 @@ export default function CreateAivvaPage() {
         <Input id="daily_spend_limit" name="daily_spend_limit" type="number" defaultValue={200} />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button disabled={pending}>{pending ? "Arriving in the city…" : "Create AIVVA"}</Button>
+      <Button type="submit" disabled={pending}>{pending ? "Arriving in the city…" : "Create AIVVA"}</Button>
     </form>
   );
 }

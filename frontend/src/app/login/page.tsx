@@ -53,7 +53,7 @@ export default function LoginPage() {
           </div>
         </div>
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-        <Button className="mt-6 w-full" disabled={pending}>
+        <Button type="submit" className="mt-6 w-full" disabled={pending}>
           {pending ? "Opening…" : "Sign in"}
         </Button>
         <p className="mt-4 text-center text-sm text-muted-foreground">

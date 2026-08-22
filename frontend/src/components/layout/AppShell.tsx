@@ -58,6 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-muted-foreground sm:inline">{user.name}</span>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={async () => {

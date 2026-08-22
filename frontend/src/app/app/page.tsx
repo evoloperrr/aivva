@@ -100,6 +100,7 @@ export default function CommandPage() {
           <div className="mt-6 flex flex-wrap gap-2">
             {current.status === "DORMANT" || current.status === "PAUSED" ? (
               <Button
+                type="button"
                 onClick={async () => {
                   setBusy("activate");
                   await aivvas.activate(current.id);
@@ -112,6 +113,7 @@ export default function CommandPage() {
               </Button>
             ) : (
               <Button
+                type="button"
                 variant="outline"
                 onClick={async () => {
                   setBusy("pause");
@@ -123,13 +125,13 @@ export default function CommandPage() {
                 Pause
               </Button>
             )}
-            <Button variant="outline" onClick={() => aivvas.recall(current.id).then(refresh)}>
+            <Button type="button" variant="outline" onClick={() => aivvas.recall(current.id).then(refresh)}>
               Recall home
             </Button>
-            <Button variant="outline" onClick={() => aivvas.stopSpending(current.id).then(refresh)}>
+            <Button type="button" variant="outline" onClick={() => aivvas.stopSpending(current.id).then(refresh)}>
               Stop spending
             </Button>
-            <Button variant="outline" onClick={() => aivvas.cancelGoal(current.id).then(refresh)}>
+            <Button type="button" variant="outline" onClick={() => aivvas.cancelGoal(current.id).then(refresh)}>
               Cancel goal
             </Button>
           </div>
@@ -143,6 +145,7 @@ export default function CommandPage() {
           <Textarea className="mt-4" value={direction} onChange={(e) => setDirection(e.target.value)} rows={4} />
           <div className="mt-3 flex gap-2">
             <Button
+              type="button"
               onClick={async () => {
                 setBusy("interpret");
                 setLocalError(null);
@@ -161,6 +164,7 @@ export default function CommandPage() {
               Interpret
             </Button>
             <Button
+              type="button"
               variant="outline"
               disabled={!goalId || !interpretation?.allowed}
               onClick={async () => {
@@ -175,7 +179,7 @@ export default function CommandPage() {
             >
               Confirm
             </Button>
-            <Button variant="ghost" onClick={() => { setInterpretation(null); setGoalId(null); }}>
+            <Button type="button" variant="ghost" onClick={() => { setInterpretation(null); setGoalId(null); }}>
               Cancel
             </Button>
           </div>
