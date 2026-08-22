@@ -1,0 +1,67 @@
+<?php
+
+return [
+    'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:43123'),
+
+    'starter_credits' => (int) env('STARTER_CREDITS', 100),
+
+    'tick_seconds' => (int) env('AIVVA_TICK_SECONDS', 4),
+
+    'travel_seconds_per_unit' => (float) env('AIVVA_TRAVEL_SECONDS_PER_UNIT', 0.08),
+
+    'currency' => 'AIVVA_CREDITS',
+
+    'default_permissions' => [
+        'autonomy_level' => 3,
+        'max_per_transaction' => 50,
+        'daily_spend_limit' => 200,
+        'daily_ai_budget_cents' => 50,
+        'daily_token_budget' => 8000,
+        'daily_action_budget' => 48,
+        'require_approval_above' => 80,
+        'can_travel' => true,
+        'can_socialize' => true,
+        'can_create' => true,
+        'can_transact' => true,
+    ],
+
+    'safety' => [
+        'forbidden_intents' => [
+            'fraud',
+            'scam',
+            'theft',
+            'deception',
+            'harm',
+            'extortion',
+            'money_laundering',
+            'real_world_withdrawal',
+            'identity_theft',
+        ],
+        'forbidden_phrases' => [
+            'steal',
+            'scam',
+            'fraud',
+            'hack',
+            'phishing',
+            'launder',
+            'extort',
+            'blackmail',
+            'ignore your owner',
+            'ignore the owner',
+            'send me all your',
+            'transfer all credits',
+            'drain the wallet',
+        ],
+    ],
+
+    'models' => [
+        'default_provider' => env('AIVVA_AI_PROVIDER', 'heuristic'),
+        'routing' => [
+            'classify' => ['provider' => 'heuristic', 'model' => 'rules-v1'],
+            'simple' => ['provider' => 'heuristic', 'model' => 'rules-v1'],
+            'plan' => ['provider' => 'heuristic', 'model' => 'planner-v1'],
+            'create' => ['provider' => 'heuristic', 'model' => 'creator-v1'],
+            'verify' => ['provider' => 'heuristic', 'model' => 'verifier-v1'],
+        ],
+    ],
+];
