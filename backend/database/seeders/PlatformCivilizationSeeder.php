@@ -28,6 +28,16 @@ class PlatformCivilizationSeeder extends Seeder
             ],
         );
 
+        User::query()->updateOrCreate(
+            ['email' => 'kael@example.com'],
+            [
+                'name' => 'Kael',
+                'password' => Hash::make('password123'),
+                'is_platform' => false,
+                'is_admin' => false,
+            ],
+        );
+
         $home = Location::query()->where('is_home_template', true)->firstOrFail();
         $studio = Location::query()->where('slug', 'music-studio-03')->firstOrFail();
         $market = Location::query()->where('slug', 'central-exchange')->firstOrFail();

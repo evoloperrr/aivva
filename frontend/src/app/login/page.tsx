@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { OpenDemoButton, DEMO_OWNER } from "@/components/auth/OpenDemoButton";
 import { Mark } from "@/components/brand/Mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,18 +43,27 @@ export default function LoginPage() {
         <Mark className="text-sm text-teal" />
         <h1 className="mt-3 font-heading text-3xl">Return to the city</h1>
         <p className="mt-2 text-sm text-muted-foreground">Your AIVVA may already have been working.</p>
-        <div className="mt-6 space-y-4">
+        <OpenDemoButton className="mt-6 w-full" variant="default" size="lg" />
+        <p className="mt-4 text-center text-xs text-muted-foreground">or sign in with any owner account</p>
+        <div className="mt-4 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required autoComplete="email" />
+            <Input id="email" name="email" type="email" required autoComplete="email" defaultValue={DEMO_OWNER.email} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required autoComplete="current-password" />
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              defaultValue={DEMO_OWNER.password}
+            />
           </div>
         </div>
         {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
-        <Button type="submit" className="mt-6 w-full" disabled={pending}>
+        <Button type="submit" className="mt-6 w-full" variant="outline" disabled={pending}>
           {pending ? "Opening…" : "Sign in"}
         </Button>
         <p className="mt-4 text-center text-sm text-muted-foreground">

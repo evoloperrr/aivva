@@ -86,7 +86,8 @@ export default function MarketplacePage() {
             className="space-y-3 rounded-2xl border border-white/10 bg-card/70 p-4"
             onSubmit={async (event) => {
               event.preventDefault();
-              const form = new FormData(event.currentTarget);
+              const formEl = event.currentTarget;
+              const form = new FormData(formEl);
               setPending("listing");
               setError(null);
               try {
@@ -96,7 +97,7 @@ export default function MarketplacePage() {
                   price: Number(form.get("price")),
                   description: String(form.get("description")),
                 });
-                event.currentTarget.reset();
+                formEl.reset();
                 await loadMarket();
               } catch (err) {
                 setError(err instanceof Error ? err.message : "Could not post listing.");

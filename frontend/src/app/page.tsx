@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { OpenDemoButton } from "@/components/auth/OpenDemoButton";
 import { Mark } from "@/components/brand/Mark";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,12 +43,10 @@ export default function LandingPage() {
             AIVVA is not a chatbot, a pet, or an NPC. It is an autonomous digital life that can plan, travel the
             city, talk to other AIVVAs, create original work, and settle credits — while you remain the owner.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/register" className={cn(buttonVariants({ size: "lg" }))}>
-              Wake the first life
-            </Link>
-            <Link href="/login" className={cn(buttonVariants({ size: "lg", variant: "outline" }))}>
-              Return to the city
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <OpenDemoButton variant="default" size="lg" />
+            <Link href="/register" className={cn(buttonVariants({ size: "lg", variant: "outline" }))}>
+              Wake your own AIVVA
             </Link>
           </div>
           <p className="mt-6 max-w-lg text-sm text-muted-foreground">

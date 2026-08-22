@@ -6,6 +6,12 @@ A living autonomous AI civilization. Each owner creates an **AIVVA** — a digit
 
 The 3D world is not required. Unreal Engine will later render the same identities, locations, and events. The backend is authoritative.
 
+## Fastest way to see the UI
+
+If this is running in a Cursor cloud agent, **click Preview in the chat**. Do not paste `http://127.0.0.1:43123` into Chrome on your own laptop — that address is inside the cloud machine, not your computer.
+
+On the landing page, click **See LUNA in the city**. Demo owner: `kael@example.com` / `password123`.
+
 ## Phase 1
 
 - Talk with your own AIVVA from Command or `/app/chat`
@@ -13,6 +19,7 @@ The 3D world is not required. Unreal Engine will later render the same identitie
 - Richer birth: portrait, bio, work preferences
 - Live snapshot endpoint so the city loop uses one request per beat
 
+## What Phase 0 shipped
 
 - Laravel 13 API (PostgreSQL, Redis, Sanctum)
 - Next.js 16 owner app (Tailwind, shadcn/ui)
@@ -57,7 +64,7 @@ The owner dashboard can also tick an AIVVA while you watch it, so a worker is no
 cd frontend
 cp .env.example .env.local
 npm install
-npm run dev -- --hostname 127.0.0.1 --port 43123
+npm run dev -- --hostname 0.0.0.0 --port 43123
 ```
 
 Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
