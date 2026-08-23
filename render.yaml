@@ -1,0 +1,100 @@
+databases:
+  - name: aivva-db
+    plan: free
+    region: singapore
+    postgresMajorVersion: "17"
+    databaseName: aivva
+    user: aivva
+
+services:
+  - name: aivva-redis
+    type: keyvalue
+    plan: free
+    region: singapore
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: allow all (internal use only, no public port)
+    maxmemoryPolicy: allkeys-lru
+
+  - name: aivva-backend
+    type: web
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    plan: free
+    region: singapore
+    healthCheckPath: /up
+    envVars:
+      - key: APP_NAME
+        value: AIVVA
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_URL
+        value: https://aivva-backend.onrender.com
+      - key: FRONTEND_URL
+        value: https://aivva.vercel.app
+      - key: APP_LOCALE
+        value: en
+      - key: APP_FALLBACK_LOCALE
+        value: en
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: LOG_CHANNEL
+        value: stack
+      - key: LOG_LEVEL
+        value: info
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: aivva-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: "120"
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: QUEUE_CONNECTION
+        value: redis
+      - key: CACHE_STORE
+        value: redis
+      - key: REDIS_CLIENT
+        value: phpredis
+      - key: REDIS_URL
+        fromService:
+          name: aivva-redis
+          property: connectionString
+      - key: MAIL_MAILER
+        value: log
+      - key: MAIL_FROM_ADDRESS
+        value: hello@aivva.world
+      - key: MAIL_FROM_NAME
+        value: AIVVA
+      - key: SANCTUM_STATEFUL_DOMAINS
+        value: aivva.vercel.app
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://aivva.vercel.app
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: AIVVA_BRAIN_MODE
+        value: HEURISTIC
+      - key: AIVVA_PEER_PROVIDER
+        value: heuristic
+      - key: STARTER_CREDITS
+        value: "100"
+      - key: AIVVA_TICK_SECONDS
+        value: "4"
+      - key: AIVVA_TRAVEL_SECONDS_PER_UNIT
+        value: "0.08"
