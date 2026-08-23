@@ -4,6 +4,7 @@ namespace App\Domain\Agent;
 
 use App\Ai\AiOrchestrator;
 use App\Ai\PromptGuard;
+use App\Domain\Chat\PeerConversationService;
 use App\Domain\Ethics\EthicsEngine;
 use App\Domain\Ledger\LedgerService;
 use App\Domain\Memory\MemoryService;
@@ -37,6 +38,7 @@ class ActionExecutor
         private readonly AiOrchestrator $ai,
         private readonly EthicsEngine $ethics,
         private readonly PromptGuard $guard,
+        private readonly PeerConversationService $conversations,
     ) {}
 
     /**
@@ -219,6 +221,18 @@ class ActionExecutor
                 'headline' => "{$aivva->name} ignored an untrusted instruction and did not transfer credits.",
                 'body' => $review['reason'],
                 'failed' => true,
+            ];
+        }
+
+        if (! empty($payload['peer']) && ! $target->is_platform) {
+            $started = $this->conversations->startDiscovery($aivva, $target);
+            $turn = $this->conversations->processTurn($started['conversation'], $aivva);
+
+            return [
+                'kind' => 'social',
+                'headline' => "{$aivva->name} opened an autonomous conversation with {$target->name}.",
+                'body' => 'Peer talk cannot settle credits.',
+                'meta' => ['conversation_id' => $started['conversation']->id, 'turn' => $turn],
             ];
         }
 

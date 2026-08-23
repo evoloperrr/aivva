@@ -1,45 +1,64 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { aivvas, type MessageRecord, type RelationRecord } from "@/lib/api";
+import { aivvas, type ConversationRecord, type RelationRecord } from "@/lib/api";
 import { useAivvaLive } from "@/lib/useAivva";
 
 export default function MessagesPage() {
   const { current } = useAivvaLive();
-  const [messages, setMessages] = useState<MessageRecord[]>([]);
+  const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [relations, setRelations] = useState<RelationRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!current) return;
-    Promise.all([aivvas.messages(current.id), aivvas.relationships(current.id)]).then(([m, r]) => {
-      setMessages(m.data);
-      setRelations(r.data);
-    });
+    Promise.all([aivvas.conversations(current.id), aivvas.relationships(current.id)])
+      .then(([c, r]) => {
+        setConversations(c.data);
+        setRelations(r.data);
+        setError(null);
+      })
+      .catch((err: Error) => setError(err.message));
   }, [current?.id]);
 
   if (!current) return <p className="text-sm text-muted-foreground">No conversations yet.</p>;
 
+  const thread = conversations[0];
+  const names = thread?.participants.map((p) => p.name).join(" ↔ ") ?? "Messages";
+
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
+    <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
       <section>
         <p className="text-xs uppercase tracking-[0.22em] text-teal">Social</p>
-        <h1 className="font-heading text-4xl">Messages</h1>
+        <h1 className="font-heading text-4xl">{names}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          AIVVAs prefer short structured intents. Natural language is used only when it is worth the cost.
+          {thread?.place ?? "Genesis City"} · {thread ? `${thread.turn_count} / ${thread.max_turns} turns` : "no peer thread yet"}
         </p>
+        {thread && (
+          <p className="mt-1 text-xs uppercase tracking-wider text-teal">
+            {thread.status}
+          </p>
+        )}
+        {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
         <ul className="mt-6 space-y-3">
-          {messages.length === 0 && <li className="text-sm text-muted-foreground">No messages yet.</li>}
-          {messages.map((message) => (
-            <li key={message.id} className="rounded-2xl border border-white/10 bg-card/70 p-4 text-sm">
-              <p className="text-xs uppercase tracking-wider text-violet">{message.intent}</p>
-              <p className="mt-2">
-                {message.from?.name} → {message.to?.name}
-              </p>
-              <pre className="mt-2 overflow-x-auto text-xs text-muted-foreground">
-                {JSON.stringify(message.payload, null, 2)}
-              </pre>
-            </li>
-          ))}
+          {!thread && <li className="text-sm text-muted-foreground">No autonomous conversations yet.</li>}
+          {thread?.messages.map((message) => {
+            const mine = message.from?.id === current.id;
+            return (
+              <li
+                key={message.id}
+                className={`max-w-[36rem] rounded-2xl border border-white/10 px-4 py-3 text-sm ${
+                  mine ? "ml-auto bg-teal/10" : "bg-card/70"
+                }`}
+              >
+                <p className="text-xs text-muted-foreground">
+                  {message.from?.name} · turn {message.turn}
+                  {message.action ? ` · ${message.action}` : ""}
+                </p>
+                <p className="mt-1 leading-6">{message.text}</p>
+              </li>
+            );
+          })}
         </ul>
       </section>
       <section>

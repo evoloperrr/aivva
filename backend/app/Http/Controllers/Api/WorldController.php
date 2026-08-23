@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\AivvaResource;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
+use App\Models\AivvaConversation;
 use App\Models\AivvaMessage;
 use App\Models\AivvaRelationship;
 use App\Models\City;
@@ -93,10 +94,44 @@ class WorldController extends Controller
             ->where(fn ($q) => $q->where('from_aivva_id', $aivva->id)->orWhere('to_aivva_id', $aivva->id))
             ->with(['from:id,name', 'to:id,name'])
             ->latest()
-            ->limit(50)
+            ->limit(80)
             ->get();
 
         return response()->json(['data' => $messages]);
+    }
+
+    public function conversations(Request $request, Aivva $aivva): JsonResponse
+    {
+        abort_unless($aivva->owner_id === $request->user()->id, 403);
+
+        $items = AivvaConversation::query()
+            ->whereHas('participants', fn ($q) => $q->where('aivva_id', $aivva->id))
+            ->with(['participants', 'location.district', 'messages' => fn ($q) => $q->orderBy('turn_number')->with(['from:id,name', 'to:id,name'])])
+            ->latest()
+            ->limit(20)
+            ->get()
+            ->map(fn (AivvaConversation $conversation) => [
+                'id' => $conversation->id,
+                'status' => $conversation->status->value,
+                'turn_count' => $conversation->turn_count,
+                'max_turns' => $conversation->max_turns,
+                'seed_event' => $conversation->seed_event,
+                'place' => $conversation->location?->district?->name ?? $conversation->location?->name,
+                'participants' => $conversation->participants->map->only(['id', 'name']),
+                'messages' => $conversation->messages
+                    ->where('message_type', '!=', 'SYSTEM_EVENT')
+                    ->values()
+                    ->map(fn ($message) => [
+                        'id' => $message->id,
+                        'from' => $message->from?->only(['id', 'name']),
+                        'action' => $message->action,
+                        'text' => $message->natural_language,
+                        'turn' => $message->turn_number,
+                        'created_at' => $message->created_at?->toIso8601String(),
+                    ]),
+            ]);
+
+        return response()->json(['data' => $items]);
     }
 
     public function relationships(Request $request, Aivva $aivva): JsonResponse

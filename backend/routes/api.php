@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/aivvas/{aivva}/activity', [WorldController::class, 'activity']);
     Route::get('/aivvas/{aivva}/memories', [WorldController::class, 'memories']);
     Route::get('/aivvas/{aivva}/messages', [WorldController::class, 'messages']);
+    Route::get('/aivvas/{aivva}/conversations', [WorldController::class, 'conversations']);
     Route::get('/aivvas/{aivva}/relationships', [WorldController::class, 'relationships']);
     Route::get('/aivvas/{aivva}/works', [WorldController::class, 'works']);
     Route::get('/aivvas/{aivva}/wallet', [WorldController::class, 'wallet']);

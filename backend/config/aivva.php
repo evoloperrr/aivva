@@ -23,6 +23,13 @@ return [
         'can_socialize' => true,
         'can_create' => true,
         'can_transact' => true,
+        'autonomous_interaction' => true,
+    ],
+
+    'conversation' => [
+        'max_turns' => (int) env('AIVVA_CONVERSATION_MAX_TURNS', 10),
+        'max_retries' => 2,
+        'allow_settlement' => false,
     ],
 
     'safety' => [
@@ -62,6 +69,10 @@ return [
             'plan' => ['provider' => 'heuristic', 'model' => 'planner-v1'],
             'create' => ['provider' => 'heuristic', 'model' => 'creator-v1'],
             'verify' => ['provider' => 'heuristic', 'model' => 'verifier-v1'],
+            'peer_turn' => [
+                'provider' => env('AIVVA_PEER_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_PEER_MODEL', 'social-v1'),
+            ],
         ],
     ],
 ];

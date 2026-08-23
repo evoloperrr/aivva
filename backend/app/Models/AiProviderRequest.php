@@ -10,7 +10,7 @@ class AiProviderRequest extends Model
     use HasUuids;
 
     protected $fillable = [
-        'aivva_id', 'provider', 'model', 'purpose',
-        'input_tokens', 'output_tokens', 'cost_cents', 'status',
+        'aivva_id', 'conversation_id', 'provider', 'model', 'purpose',
+        'input_tokens', 'output_tokens', 'cost_cents', 'latency_ms', 'status',
     ];
 }

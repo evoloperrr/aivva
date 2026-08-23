@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -132,6 +133,12 @@ class Aivva extends Model
     public function chats(): HasMany
     {
         return $this->hasMany(OwnerChat::class);
+    }
+
+    public function conversations(): BelongsToMany
+    {
+        return $this->belongsToMany(AivvaConversation::class, 'aivva_conversation_participants', 'aivva_id', 'conversation_id')
+            ->withTimestamps();
     }
 
     public function worldClock(): string

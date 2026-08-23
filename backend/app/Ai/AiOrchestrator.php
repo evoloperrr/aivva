@@ -5,6 +5,8 @@ namespace App\Ai;
 use App\Ai\Contracts\AiProviderInterface;
 use App\Models\AiProviderRequest;
 use App\Models\Aivva;
+use App\Models\AivvaDailyBudget;
+use Throwable;
 
 class AiOrchestrator
 {
@@ -25,8 +27,9 @@ class AiOrchestrator
     public function classify(string $purpose, string $input, array $labels, ?Aivva $aivva = null, array $options = []): AiResponse
     {
         $provider = $this->router->providerFor($purpose);
+        $started = hrtime(true);
         $response = $provider->classify($input, $labels, $options);
-        $this->record($provider, $purpose, $response, $aivva);
+        $this->record($provider, $purpose, $response, $aivva, $options, (int) ((hrtime(true) - $started) / 1_000_000), 'OK');
 
         return $response;
     }
@@ -34,8 +37,9 @@ class AiOrchestrator
     public function summarize(string $purpose, string $text, ?Aivva $aivva = null, array $options = []): AiResponse
     {
         $provider = $this->router->providerFor($purpose);
+        $started = hrtime(true);
         $response = $provider->summarize($text, $options);
-        $this->record($provider, $purpose, $response, $aivva);
+        $this->record($provider, $purpose, $response, $aivva, $options, (int) ((hrtime(true) - $started) / 1_000_000), 'OK');
 
         return $response;
     }
@@ -54,24 +58,58 @@ class AiOrchestrator
     private function call(string $method, string $purpose, string $prompt, ?Aivva $aivva, array $options): AiResponse
     {
         $provider = $this->router->providerFor($purpose);
-        /** @var AiResponse $response */
-        $response = $provider->{$method}($prompt, $options);
-        $this->record($provider, $purpose, $response, $aivva);
+        $started = hrtime(true);
+        try {
+            /** @var AiResponse $response */
+            $response = $provider->{$method}($prompt, $options);
+            $this->record($provider, $purpose, $response, $aivva, $options, (int) ((hrtime(true) - $started) / 1_000_000), 'OK');
 
-        return $response;
+            return $response;
+        } catch (Throwable $e) {
+            $this->record(
+                $provider,
+                $purpose,
+                new AiResponse(text: '', structured: [], provider: $provider->name(), model: 'unknown'),
+                $aivva,
+                $options,
+                (int) ((hrtime(true) - $started) / 1_000_000),
+                'FAILED',
+            );
+            throw $e;
+        }
     }
 
-    private function record(AiProviderInterface $provider, string $purpose, AiResponse $response, ?Aivva $aivva): void
-    {
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function record(
+        AiProviderInterface $provider,
+        string $purpose,
+        AiResponse $response,
+        ?Aivva $aivva,
+        array $options,
+        int $latencyMs,
+        string $status,
+    ): void {
         AiProviderRequest::query()->create([
             'aivva_id' => $aivva?->id,
+            'conversation_id' => $options['conversation_id'] ?? null,
             'provider' => $response->provider ?: $provider->name(),
             'model' => $response->model,
             'purpose' => $purpose,
             'input_tokens' => $response->inputTokens,
             'output_tokens' => $response->outputTokens,
-            'cost_cents' => $response->provider === 'heuristic' ? 0 : 1,
-            'status' => 'OK',
+            'cost_cents' => $response->provider === 'heuristic' ? 0 : max(0, (int) ceil(($response->inputTokens + $response->outputTokens) / 1000)),
+            'latency_ms' => max(0, $latencyMs),
+            'status' => $status,
         ]);
+
+        if ($aivva && $status === 'OK') {
+            $budget = AivvaDailyBudget::todayFor($aivva);
+            $budget->increment('tokens_used', $response->inputTokens + $response->outputTokens);
+            if ($response->provider !== 'heuristic') {
+                $budget->increment('ai_cost_cents', max(0, (int) ceil(($response->inputTokens + $response->outputTokens) / 1000)));
+            }
+        }
     }
 }

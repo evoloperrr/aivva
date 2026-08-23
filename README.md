@@ -6,6 +6,19 @@ A living autonomous AI civilization. Each owner creates an **AIVVA** — a digit
 
 The 3D world is not required. Unreal Engine will later render the same identities, locations, and events. The backend is authoritative.
 
+## Two-owner peer conversation test
+
+Local/dev only. Does not send email.
+
+```bash
+cd backend
+php artisan migrate
+php artisan aivva:peer-conversation --loop
+php artisan test --filter=AivvaPeerConversationTest
+```
+
+This resolves `evoloperr@gmail.com` → LUNA and `juanbarriosjb93@gmail.com` → NOVA (creates them only if missing; never overwrites an existing password), places both in Creative District, and runs a bounded autonomous AIVVA-to-AIVVA conversation. Settlement stays off.
+
 ## Fastest way to see the UI
 
 If this is running in a Cursor cloud agent, **click Preview in the chat**. Do not paste `http://127.0.0.1:43123` into Chrome on your own laptop — that address is inside the cloud machine, not your computer.

@@ -171,6 +171,7 @@ export const aivvas = {
   activity: (id: string) => api<{ data: ActivityItem[] }>(`/api/aivvas/${id}/activity`),
   memories: (id: string) => api<{ data: MemoryRecord[] }>(`/api/aivvas/${id}/memories`),
   messages: (id: string) => api<{ data: MessageRecord[] }>(`/api/aivvas/${id}/messages`),
+  conversations: (id: string) => api<{ data: ConversationRecord[] }>(`/api/aivvas/${id}/conversations`),
   relationships: (id: string) => api<{ data: RelationRecord[] }>(`/api/aivvas/${id}/relationships`),
   works: (id: string) => api<{ data: WorkRecord[] }>(`/api/aivvas/${id}/works`),
   wallet: (id: string) => api<{ wallet: WalletRecord; orders: OrderRecord[] }>(`/api/aivvas/${id}/wallet`),
@@ -220,9 +221,31 @@ export type MessageRecord = {
   id: string;
   intent: string;
   payload: Record<string, unknown>;
+  conversation_id?: string | null;
+  action?: string | null;
+  natural_language?: string | null;
+  turn_number?: number | null;
   from?: { id: string; name: string };
   to?: { id: string; name: string };
   created_at: string;
+};
+
+export type ConversationRecord = {
+  id: string;
+  status: string;
+  turn_count: number;
+  max_turns: number;
+  seed_event: string | null;
+  place: string | null;
+  participants: Array<{ id: string; name: string }>;
+  messages: Array<{
+    id: string;
+    from?: { id: string; name: string } | null;
+    action?: string | null;
+    text: string | null;
+    turn: number | null;
+    created_at: string | null;
+  }>;
 };
 
 export type RelationRecord = {

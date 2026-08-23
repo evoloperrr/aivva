@@ -2,6 +2,7 @@
 
 namespace App\Domain\Agent;
 
+use App\Domain\Chat\PeerConversationService;
 use App\Domain\World\MovementService;
 use App\Enums\ActionStatus;
 use App\Enums\ActionType;
@@ -20,6 +21,7 @@ class AgentRuntime
         private readonly ActionValidator $validator,
         private readonly ActionExecutor $executor,
         private readonly MovementService $movement,
+        private readonly PeerConversationService $conversations,
     ) {}
 
     /**
@@ -36,6 +38,14 @@ class AgentRuntime
         }
         if ($aivva->status === AivvaStatus::Dormant) {
             return ['ok' => false, 'reason' => 'AIVVA is dormant.', 'aivva_id' => $aivva->id];
+        }
+
+        $pending = $this->conversations->pendingFor($aivva);
+        if ($pending) {
+            $turn = $this->conversations->processTurn($pending, $aivva);
+            $this->scheduleNext($aivva->fresh());
+
+            return ['ok' => (bool) ($turn['ok'] ?? false), 'peer_turn' => $turn, 'aivva_id' => $aivva->id];
         }
 
         $travel = $this->movement->completeIfDue($aivva);

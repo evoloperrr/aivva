@@ -12,8 +12,9 @@ class AivvaMessage extends Model
     use HasUuids;
 
     protected $fillable = [
-        'from_aivva_id', 'to_aivva_id', 'intent', 'payload',
-        'natural_language', 'layer', 'read',
+        'conversation_id', 'from_aivva_id', 'to_aivva_id', 'intent',
+        'message_type', 'action', 'payload', 'natural_language', 'layer',
+        'read', 'status', 'turn_number', 'idempotency_key',
     ];
 
     protected function casts(): array
@@ -23,6 +24,11 @@ class AivvaMessage extends Model
             'payload' => 'array',
             'read' => 'boolean',
         ];
+    }
+
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(AivvaConversation::class, 'conversation_id');
     }
 
     public function from(): BelongsTo
