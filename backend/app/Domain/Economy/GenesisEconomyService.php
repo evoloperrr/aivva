@@ -28,6 +28,11 @@ use RuntimeException;
 
 class GenesisEconomyService
 {
+    /**
+     * @var array{calls: int, input_tokens: int, output_tokens: int, cost_cents: int}|null
+     */
+    private ?array $usageBefore = null;
+
     public function __construct(
         private readonly TwoOwnerConversationFixture $fixture,
         private readonly AivvaService $aivvas,
@@ -55,6 +60,7 @@ class GenesisEconomyService
         $luna = $pair['luna'];
         $nova = $pair['nova'];
         $before = $this->ledger->integrity();
+        $this->usageBefore = $this->usageSnapshot();
         $human = 0;
         $transcript = [];
         $ledgerIds = [];
@@ -253,7 +259,7 @@ class GenesisEconomyService
      *
      * @return array<string, mixed>
      */
-    public function evaluateConversationGate(int $maxTurns): array
+    public function evaluateConversationGate(int $maxTurns, bool $requireLiveProvider = false): array
     {
         $pair = $this->preparePair();
         $luna = $pair['luna'];
@@ -322,7 +328,15 @@ class GenesisEconomyService
         }
 
         $providers = $this->conversations->usageSummary($conversation);
-        $liveProviders = collect($providers['providers'] ?? [])->filter(fn ($name) => $name !== 'heuristic')->values()->all();
+        $attackUsage = $this->conversations->usageSummary($attackConversation);
+        $allProviders = collect($providers['providers'] ?? [])
+            ->merge($attackUsage['providers'] ?? [])
+            ->unique()
+            ->values();
+        $liveProviders = $allProviders->filter(fn ($name) => in_array($name, ['openai', 'anthropic', 'gemini'], true))->values()->all();
+        if ($requireLiveProvider && $liveProviders === []) {
+            $reasons[] = 'Peer turns were not served by a live LLM provider.';
+        }
         $structuredOk = $spokenCount > 0 && $conversation->fresh()->last_error === null;
         if (! $structuredOk) {
             $reasons[] = 'Structured peer-turn validation did not produce a clean conversation.';
@@ -584,14 +598,7 @@ class GenesisEconomyService
         int $maxTurns = 10,
     ): array {
         $after = $this->ledger->integrity();
-        $usage = [
-            'calls' => AiProviderRequest::query()->count(),
-            'input_tokens' => (int) AiProviderRequest::query()->sum('input_tokens'),
-            'output_tokens' => (int) AiProviderRequest::query()->sum('output_tokens'),
-            'cost_cents' => (int) AiProviderRequest::query()->sum('cost_cents'),
-        ];
-        $usage['total_tokens'] = $usage['input_tokens'] + $usage['output_tokens'];
-        $usage['estimated_cost_usd'] = number_format($usage['cost_cents'] / 100, 4, '.', '');
+        $usage = $this->usageDelta($this->usageBefore ?? $this->usageSnapshot(), $this->usageSnapshot());
 
         return [
             'outcome' => $outcome,
@@ -623,5 +630,37 @@ class GenesisEconomyService
     public function conversations(): PeerConversationService
     {
         return $this->conversations;
+    }
+
+    /**
+     * @return array{calls: int, input_tokens: int, output_tokens: int, cost_cents: int}
+     */
+    private function usageSnapshot(): array
+    {
+        return [
+            'calls' => AiProviderRequest::query()->count(),
+            'input_tokens' => (int) AiProviderRequest::query()->sum('input_tokens'),
+            'output_tokens' => (int) AiProviderRequest::query()->sum('output_tokens'),
+            'cost_cents' => (int) AiProviderRequest::query()->sum('cost_cents'),
+        ];
+    }
+
+    /**
+     * @param  array{calls: int, input_tokens: int, output_tokens: int, cost_cents: int}  $before
+     * @param  array{calls: int, input_tokens: int, output_tokens: int, cost_cents: int}  $after
+     * @return array{calls: int, input_tokens: int, output_tokens: int, cost_cents: int, total_tokens: int, estimated_cost_usd: string}
+     */
+    private function usageDelta(array $before, array $after): array
+    {
+        $usage = [
+            'calls' => max(0, $after['calls'] - $before['calls']),
+            'input_tokens' => max(0, $after['input_tokens'] - $before['input_tokens']),
+            'output_tokens' => max(0, $after['output_tokens'] - $before['output_tokens']),
+            'cost_cents' => max(0, $after['cost_cents'] - $before['cost_cents']),
+        ];
+        $usage['total_tokens'] = $usage['input_tokens'] + $usage['output_tokens'];
+        $usage['estimated_cost_usd'] = number_format($usage['cost_cents'] / 100, 4, '.', '');
+
+        return $usage;
     }
 }
