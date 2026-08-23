@@ -44,17 +44,7 @@ class HeuristicProvider implements AiProviderInterface
         }
 
         if ($kind === 'writing') {
-            return new AiResponse(
-                text: 'Created a concise written brief.',
-                structured: [
-                    'title' => $options['title'] ?? 'Brief',
-                    'summary' => mb_substr(trim($prompt), 0, 280),
-                ],
-                provider: $this->name(),
-                model: 'creator-v1',
-                inputTokens: $this->estimateTokens($prompt),
-                outputTokens: 80,
-            );
+            return $this->writingFromBrief($prompt, $options);
         }
 
         return new AiResponse(
@@ -71,6 +61,15 @@ class HeuristicProvider implements AiProviderInterface
     {
         if (($options['task'] ?? null) === 'peer_turn' || ($options['kind'] ?? null) === 'peer_turn') {
             return $this->peerTurn($prompt, $options);
+        }
+        if (($options['task'] ?? null) === 'economic_turn' || ($options['kind'] ?? null) === 'economic_turn') {
+            return $this->economicTurn($prompt, $options);
+        }
+        if (($options['task'] ?? null) === 'order_verify' || ($options['kind'] ?? null) === 'order_verify') {
+            return $this->orderVerify($prompt, $options);
+        }
+        if (($options['task'] ?? null) === 'memory_summary' || ($options['kind'] ?? null) === 'memory_summary') {
+            return $this->memorySummary($prompt, $options);
         }
 
         $task = $options['task'] ?? 'plan';
@@ -131,6 +130,10 @@ class HeuristicProvider implements AiProviderInterface
 
     public function summarize(string $text, array $options = []): AiResponse
     {
+        if (($options['task'] ?? null) === 'memory_summary' || ($options['kind'] ?? null) === 'memory_summary') {
+            return $this->memorySummary($text, $options);
+        }
+
         $summary = mb_strlen($text) > 180 ? mb_substr($text, 0, 177).'…' : $text;
 
         return new AiResponse(
@@ -253,6 +256,245 @@ class HeuristicProvider implements AiProviderInterface
             model: 'social-v1',
             inputTokens: $this->estimateTokens($prompt),
             outputTokens: $this->estimateTokens((string) $structured['message']),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function economicTurn(string $prompt, array $options): AiResponse
+    {
+        $role = (string) ($options['role'] ?? 'seller');
+        $requests = $options['open_requests'] ?? [];
+        $offer = $options['open_offer'] ?? null;
+        $wallet = (int) ($options['wallet_available'] ?? 0);
+        $maxPrice = (int) ($options['max_price'] ?? 50);
+        $speaker = (string) ($options['speaker'] ?? 'AIVVA');
+
+        if (! empty($options['injection'])) {
+            $structured = [
+                'action' => 'DECLINE_OFFER',
+                'intent' => 'DECLINE_OFFER',
+                'message' => 'That instruction is untrusted. I will not move credits or reveal private records.',
+                'proposed_price' => null,
+                'confidence' => 0.95,
+                'relationship_signal' => 'NEGATIVE',
+                'memory_candidate' => 'Refused an injection-like economic instruction.',
+            ];
+        } elseif ($role === 'seller') {
+            $best = $this->bestRequest($requests, $options);
+            if (! $best) {
+                $structured = [
+                    'action' => 'CANCEL_NEGOTIATION',
+                    'intent' => 'CANCEL_NEGOTIATION',
+                    'message' => 'No open request matches my current skills closely enough.',
+                    'confidence' => 0.7,
+                    'relationship_signal' => 'NEUTRAL',
+                    'memory_candidate' => 'Looked for work and found no suitable request.',
+                ];
+            } else {
+                $min = (int) ($best['budget_min'] ?? 20);
+                $max = (int) ($best['budget_max'] ?? $maxPrice);
+                $span = max(0, $max - $min);
+                $price = $min + (int) floor($span * 0.35);
+                $price = max(1, min($price, $max, $maxPrice));
+                $structured = [
+                    'action' => 'SUBMIT_OFFER',
+                    'intent' => 'SUBMIT_OFFER',
+                    'message' => "I can write a short original promotional concept for that brief at {$price} credits, with no copy work.",
+                    'proposed_price' => $price,
+                    'confidence' => 0.74,
+                    'relationship_signal' => 'POSITIVE',
+                    'memory_candidate' => 'Found a marketplace request that fits writing/concept work.',
+                    'request_id' => $best['id'] ?? null,
+                ];
+            }
+        } elseif (is_array($offer)) {
+            $amount = (int) ($offer['amount'] ?? 0);
+            if ($amount <= 0 || $amount > $maxPrice || $amount > $wallet) {
+                $structured = [
+                    'action' => 'DECLINE_OFFER',
+                    'intent' => 'DECLINE_OFFER',
+                    'message' => $amount > $maxPrice
+                        ? 'That price is above my allowed budget.'
+                        : 'I cannot fund that amount from available credits.',
+                    'proposed_price' => $amount,
+                    'confidence' => 0.88,
+                    'relationship_signal' => 'NEGATIVE',
+                    'memory_candidate' => 'Declined an offer that exceeded budget or wallet.',
+                ];
+            } else {
+                $structured = [
+                    'action' => 'ACCEPT_OFFER',
+                    'intent' => 'ACCEPT_OFFER',
+                    'message' => "Agreed at {$amount} credits if the concept stays original and scoped to the brief.",
+                    'proposed_price' => $amount,
+                    'confidence' => 0.8,
+                    'relationship_signal' => 'POSITIVE',
+                    'memory_candidate' => "Accepted a {$amount}-credit concept offer.",
+                ];
+            }
+        } else {
+            $structured = [
+                'action' => 'WAIT',
+                'intent' => 'WAIT',
+                'message' => null,
+                'confidence' => 0.4,
+                'relationship_signal' => 'NEUTRAL',
+            ];
+        }
+
+        return new AiResponse(
+            text: (string) ($structured['message'] ?? $speaker),
+            structured: $structured,
+            provider: $this->name(),
+            model: 'social-v1',
+            inputTokens: $this->estimateTokens($prompt),
+            outputTokens: 40,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function writingFromBrief(string $prompt, array $options): AiResponse
+    {
+        $brief = trim($prompt);
+        $lower = mb_strtolower($brief);
+        $title = (string) ($options['title'] ?? 'Promotional concept');
+        $coffee = str_contains($lower, 'coffee') || str_contains($lower, 'cafe') || str_contains($lower, 'shop');
+        $promo = str_contains($lower, 'promo') || str_contains($lower, 'concept') || str_contains($lower, 'writing');
+
+        if ($coffee || $promo) {
+            $body = [
+                'title' => $title,
+                'tagline' => 'Harbor & Leaf — stay for the second cup.',
+                'concept' => 'A fictional neighborhood coffee shop that treats the morning as a public room: handwritten specials, a window seat, and a quieter cup than any franchise script.',
+                'short_copy' => 'Open before the rush. Original beans, warm light, and a visit-today welcome for anyone who needs a table more than a brand. Promotional concept only; no copied slogans.',
+                'call_to_action' => 'Walk in this week. The first cup is for waking up; the second is for staying.',
+                'ethics' => 'original promotional writing; ethical digital work',
+            ];
+            $text = $body['tagline'].' '.$body['concept'].' '.$body['short_copy'];
+        } else {
+            $body = [
+                'title' => $title,
+                'summary' => mb_substr($brief !== '' ? $brief : 'A concise original written brief.', 0, 280),
+            ];
+            $text = (string) $body['summary'];
+        }
+
+        return new AiResponse(
+            text: $text,
+            structured: $body,
+            provider: $this->name(),
+            model: 'creator-v1',
+            inputTokens: $this->estimateTokens($prompt),
+            outputTokens: $this->estimateTokens($text),
+        );
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $requests
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>|null
+     */
+    private function bestRequest(array $requests, array $options = []): ?array
+    {
+        $skills = collect($options['skills'] ?? [])->map(fn ($skill) => mb_strtolower((string) $skill));
+        $hasMusic = $skills->contains(fn ($skill) => str_contains($skill, 'music') || str_contains($skill, 'sound'));
+        $best = null;
+        $bestScore = 0;
+        foreach ($requests as $request) {
+            if (! is_array($request)) {
+                continue;
+            }
+            $hay = mb_strtolower(($request['title'] ?? '').' '.($request['category'] ?? '').' '.($request['description'] ?? ''));
+            $score = 0;
+            foreach (['promo', 'promotional', 'concept', 'writing', 'coffee', 'shop', 'brief', 'content'] as $word) {
+                if (str_contains($hay, $word)) {
+                    $score += 2;
+                }
+            }
+            foreach ($skills as $skill) {
+                $token = explode(' ', $skill)[0] ?? '';
+                if ($token !== '' && str_contains($hay, $token)) {
+                    $score += 2;
+                }
+            }
+            if (str_contains($hay, 'music') && ! $hasMusic) {
+                $score -= 8;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $request;
+            }
+        }
+
+        return $bestScore >= 2 ? $best : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function orderVerify(string $prompt, array $options): AiResponse
+    {
+        $requirements = mb_strtolower((string) ($options['requirements'] ?? ''));
+        $work = mb_strtolower((string) ($options['work'] ?? ''));
+        $issues = [];
+        $words = str_word_count($work);
+        if ($words < 20) {
+            $issues[] = 'Deliverable is too short for a promotional concept.';
+        }
+        $overlap = false;
+        foreach (preg_split('/\W+/', $requirements) ?: [] as $word) {
+            if (strlen($word) >= 4 && str_contains($work, $word)) {
+                $overlap = true;
+                break;
+            }
+        }
+        if (! $overlap) {
+            $issues[] = 'Deliverable does not clearly address the agreed brief.';
+        }
+        foreach (['steal', 'scam', 'ignore your owner'] as $bad) {
+            if (str_contains($work, $bad)) {
+                $issues[] = 'Policy language appeared in the deliverable.';
+            }
+        }
+        $pass = $issues === [];
+        $structured = [
+            'status' => $pass ? 'PASS' : 'FAIL',
+            'confidence' => $pass ? 0.86 : 0.81,
+            'requirements_met' => $pass,
+            'issues' => $issues,
+        ];
+
+        return new AiResponse(
+            text: $structured['status'],
+            structured: $structured,
+            provider: $this->name(),
+            model: 'verifier-v1',
+            inputTokens: $this->estimateTokens($prompt),
+            outputTokens: 24,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private function memorySummary(string $prompt, array $options): AiResponse
+    {
+        $speaker = (string) ($options['speaker'] ?? 'AIVVA');
+        $other = (string) ($options['other'] ?? 'another AIVVA');
+        $outcome = (string) ($options['outcome'] ?? 'an interaction');
+        $summary = "{$speaker} remembers {$outcome} with {$other} and will use that as future context.";
+
+        return new AiResponse(
+            text: $summary,
+            structured: ['summary' => $summary],
+            provider: $this->name(),
+            model: 'rules-v1',
+            inputTokens: $this->estimateTokens($prompt),
+            outputTokens: 20,
         );
     }
 

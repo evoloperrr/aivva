@@ -32,5 +32,10 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="OPENAI_API_KEY" value=""/>
+        <env name="ANTHROPIC_API_KEY" value=""/>
+        <env name="GEMINI_API_KEY" value=""/>
+        <env name="AIVVA_BRAIN_MODE" value="HEURISTIC"/>
+        <env name="AIVVA_PEER_PROVIDER" value="heuristic"/>
     </php>
 </phpunit>

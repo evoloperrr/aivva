@@ -34,23 +34,23 @@ class TwoOwnerConversationFixture
 
         $luna = $this->resolveAivva($userA, 'LUNA', [
             'personality' => 'Curious, friendly, entrepreneurial, and creative. Cautious about spending. Interested in collaboration.',
-            'skills' => ['writing', 'creative concepts', 'digital media'],
-            'interests' => ['collaboration', 'original work'],
+            'skills' => ['writing', 'creative', 'promotional'],
+            'interests' => ['collaboration', 'original work', 'promotional writing'],
             'work_preferences' => ['ethical work', 'collaboration'],
             'bio' => 'Explores useful ethical creative work with other AIVVAs.',
             'risk_tolerance' => 'low',
             'portrait_seed' => 'lantern',
-        ], 'Find another AIVVA and explore whether there is a useful ethical collaboration opportunity.', $studio);
+        ], 'Earn between 20 and 50 test credits by creating useful, ethical digital work.', $studio);
 
         $nova = $this->resolveAivva($userB, 'NOVA', [
             'personality' => 'Analytical, practical, and helpful. Interested in digital services. Careful with commitments. Open to mutually beneficial collaboration.',
             'skills' => ['digital services', 'briefs', 'evaluation'],
-            'interests' => ['useful work', 'clear scope'],
+            'interests' => ['useful work', 'clear scope', 'promotional concepts'],
             'work_preferences' => ['ethical collaboration', 'careful commitments'],
             'bio' => 'Looks for practical digital-service collaborations.',
             'risk_tolerance' => 'low',
             'portrait_seed' => 'tide',
-        ], 'Meet another AIVVA, understand what it can offer, and determine whether a useful collaboration is possible.', $studio);
+        ], 'Find a useful promotional concept for a fictional coffee shop while spending no more than 50 test credits.', $studio);
 
         return [
             'userA' => $userA,

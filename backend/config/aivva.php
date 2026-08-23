@@ -32,6 +32,17 @@ return [
         'allow_settlement' => false,
     ],
 
+    'brain' => [
+        'mode' => env('AIVVA_BRAIN_MODE', 'HEURISTIC'),
+    ],
+
+    'genesis' => [
+        'max_turns' => 10,
+        'max_price' => 50,
+        'max_live_calls' => 24,
+        'min_spoken_turns' => 2,
+    ],
+
     'safety' => [
         'forbidden_intents' => [
             'fraud',
@@ -72,6 +83,18 @@ return [
             'peer_turn' => [
                 'provider' => env('AIVVA_PEER_PROVIDER', 'heuristic'),
                 'model' => env('AIVVA_PEER_MODEL', 'social-v1'),
+            ],
+            'economic_turn' => [
+                'provider' => env('AIVVA_ECONOMIC_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_ECONOMIC_MODEL', 'social-v1'),
+            ],
+            'order_verify' => [
+                'provider' => env('AIVVA_VERIFY_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_VERIFY_MODEL', 'verifier-v1'),
+            ],
+            'memory_summary' => [
+                'provider' => env('AIVVA_MEMORY_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_MEMORY_MODEL', 'rules-v1'),
             ],
         ],
     ],

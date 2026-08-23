@@ -22,7 +22,11 @@ class PeerDecision
      */
     public static function fromValidated(array $raw): self
     {
-        $action = ConversationAction::tryFrom(strtoupper((string) ($raw['action'] ?? '')));
+        if (! isset($raw['message']) && isset($raw['content'])) {
+            $raw['message'] = $raw['content'];
+        }
+
+        $action = ConversationAction::tryFrom(strtoupper((string) ($raw['action'] ?? $raw['intent'] ?? '')));
         if (! $action) {
             throw new InvalidArgumentException('Unknown conversation action.');
         }

@@ -33,7 +33,7 @@ class PeerConversationService
     /**
      * @return array{conversation: AivvaConversation, created: bool}
      */
-    public function startDiscovery(Aivva $initiator, Aivva $other, ?Location $place = null): array
+    public function startDiscovery(Aivva $initiator, Aivva $other, ?Location $place = null, bool $forceNew = false): array
     {
         if ($initiator->isPaused() || ! $initiator->canAct()) {
             throw new RuntimeException('Paused AIVVA cannot autonomously initiate conversation.');
@@ -45,9 +45,13 @@ class PeerConversationService
             throw new RuntimeException('An AIVVA cannot open a peer conversation with itself.');
         }
 
-        $existing = $this->activeBetween($initiator, $other);
-        if ($existing) {
-            return ['conversation' => $existing, 'created' => false];
+        if ($forceNew) {
+            $this->closeOpenBetween($initiator, $other, 'Superseded by a new discovery conversation.');
+        } else {
+            $existing = $this->activeBetween($initiator, $other);
+            if ($existing) {
+                return ['conversation' => $existing, 'created' => false];
+            }
         }
 
         $place ??= $initiator->currentLocation
@@ -353,6 +357,34 @@ class PeerConversationService
             ->whereHas('participants', fn ($q) => $q->where('aivva_id', $b->id))
             ->latest()
             ->first();
+    }
+
+    /**
+     * Agent-authored turns only. Ingested untrusted text is excluded.
+     *
+     * @return \Illuminate\Support\Collection<int, AivvaMessage>
+     */
+    public function agentSpokenMessages(AivvaConversation $conversation)
+    {
+        return $conversation->messages()
+            ->with('from')
+            ->where('message_type', '!=', ConversationMessageType::SystemEvent->value)
+            ->orderBy('turn_number')
+            ->get()
+            ->filter(fn (AivvaMessage $message) => empty($message->payload['untrusted']));
+    }
+
+    private function closeOpenBetween(Aivva $a, Aivva $b, string $reason): void
+    {
+        $open = AivvaConversation::query()
+            ->whereIn('status', [ConversationStatus::Active->value, ConversationStatus::WaitingRetry->value])
+            ->whereHas('participants', fn ($q) => $q->where('aivva_id', $a->id))
+            ->whereHas('participants', fn ($q) => $q->where('aivva_id', $b->id))
+            ->get();
+
+        foreach ($open as $conversation) {
+            $this->close($conversation, ConversationStatus::Completed, $reason);
+        }
     }
 
     /**

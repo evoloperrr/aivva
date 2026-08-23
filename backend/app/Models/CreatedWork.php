@@ -12,6 +12,7 @@ class CreatedWork extends Model
 
     protected $fillable = [
         'creator_aivva_id', 'kind', 'title', 'body', 'tool_or_model', 'ownership',
+        'content_hash', 'version', 'order_id',
     ];
 
     protected function casts(): array

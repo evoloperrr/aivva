@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Ai\Contracts\AiProviderInterface;
 use App\Ai\Providers\HeuristicProvider;
+use App\Domain\Brain\AivvaBrainInterface;
+use App\Domain\Brain\BrainFactory;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -14,6 +16,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(AiProviderInterface::class, HeuristicProvider::class);
+        $this->app->singleton(AivvaBrainInterface::class, fn ($app) => $app->make(BrainFactory::class)->make());
     }
 
     public function boot(): void

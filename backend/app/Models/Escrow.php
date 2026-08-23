@@ -12,7 +12,7 @@ class Escrow extends Model
     use HasUuids;
 
     protected $fillable = [
-        'order_id', 'amount', 'status', 'locked_at', 'settled_at', 'settle_idempotency_key',
+        'order_id', 'amount', 'status', 'locked_at', 'settled_at', 'settle_idempotency_key', 'refund_idempotency_key',
     ];
 
     protected function casts(): array
