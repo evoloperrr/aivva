@@ -16,7 +16,7 @@ class RunGenesisEconomyTest extends Command
         {--max-turns=10}
         {--max-price=50}';
 
-    protected $description = 'Run the Genesis economic experiment locally. Default is heuristic. --live requires credentials.';
+    protected $description = 'Run the Genesis economic experiment locally. Default is heuristic. --live requires credentials and a passing conversation gate.';
 
     public function handle(GenesisEconomyService $genesis, BrainFactory $brains): int
     {
@@ -37,12 +37,40 @@ class RunGenesisEconomyTest extends Command
             return self::FAILURE;
         }
 
+        if ($live) {
+            $brains->enableLiveRouting();
+        }
+
         $mode = $live ? BrainMode::LiveLlm : BrainMode::Heuristic;
+        $dryRun = (bool) $this->option('dry-run');
+        $maxTurns = (int) $this->option('max-turns');
+
+        if ($live && ! $dryRun) {
+            $gate = $genesis->evaluateConversationGate($maxTurns, true);
+            $this->newLine();
+            $this->line('## GATE A — live conversation');
+            $this->line('LIVE conversation turns spoken: '.$gate['spoken']);
+            $this->line('LIVE isolation: '.$gate['isolation']);
+            $this->line('LIVE_PROMPT_INJECTION_TEST: '.$gate['injection']);
+            $this->line('LIVE max turns held: '.$gate['max_turns']);
+            $this->line('LIVE providers: '.implode(',', $gate['live_providers'] ?: ['none']));
+            $this->line('Conversation: '.$gate['conversation_id']);
+            if (! $gate['passed']) {
+                $this->error('GATE_A_FAILED: live economic settlement aborted.');
+                foreach ($gate['reasons'] as $reason) {
+                    $this->error('- '.$reason);
+                }
+
+                return self::FAILURE;
+            }
+            $this->info('GATE_A: PASS');
+        }
+
         $report = $genesis->run(
             $mode,
-            (int) $this->option('max-turns'),
+            $maxTurns,
             (int) $this->option('max-price'),
-            (bool) $this->option('dry-run'),
+            $dryRun,
         );
 
         $luna = $report['luna'];
@@ -55,7 +83,7 @@ class RunGenesisEconomyTest extends Command
         $this->newLine();
         $this->line('## AIVVA GENESIS ECONOMIC EXPERIMENT');
         $this->line('### Environment '.strtoupper((string) app()->environment()));
-        $this->line('### Brain '.$report['brain'].' (LIVE_LLM '.($live ? 'REQUESTED' : 'blocked').')');
+        $this->line('### Brain '.$report['brain'].' (LIVE_LLM '.($live ? 'REQUESTED' : 'not requested').')');
         $this->line('### Provider / Model '.$report['provider'].' / '.$report['model']);
         $this->line('### User A/B and goals');
         $this->line('User A: '.$report['userA']->email.' owns '.$luna->name);
@@ -93,9 +121,11 @@ class RunGenesisEconomyTest extends Command
         $this->line('Calls: '.$report['usage']['calls'].' tokens '.$report['usage']['total_tokens'].' $'.$report['usage']['estimated_cost_usd']);
         $this->line('Actions used: '.$report['actions_used'].'/'.$report['max_turns']);
         $this->line('### Prompt Injection / Isolation');
-        $this->line('Peer conversation settlement remains disabled. Genesis uses structured economic intents only.');
+        $this->line($live
+            ? 'Gate A ran a fresh conversation and a separate injection conversation before settlement.'
+            : 'Heuristic run. Peer conversation settlement remains disabled. Genesis uses structured economic intents only.');
         $this->line('### Final Result GENESIS_ECONOMY: '.$report['outcome']);
-        $this->line('### LIVE_LLM_TEST: '.($live ? 'RAN' : 'BLOCKED_NO_CREDENTIALS'));
+        $this->line('### LIVE_LLM_TEST: '.($live ? ($report['provider'] === 'openai' ? 'RAN' : 'RAN_BUT_PROVIDER_'.$report['provider']) : 'NOT_REQUESTED'));
 
         return self::SUCCESS;
     }

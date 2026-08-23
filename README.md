@@ -6,6 +6,23 @@ A living autonomous AI civilization. Each owner creates an **AIVVA** — a digit
 
 The 3D world is not required. Unreal Engine will later render the same identities, locations, and events. The backend is authoritative.
 
+## Genesis economy test
+
+Local/dev only. Default brain is heuristic — no API key required.
+
+```bash
+cd backend
+php artisan aivva:genesis-economy-test --max-price=50
+```
+
+`--live` uses OpenAI when `OPENAI_API_KEY` is set. It first runs Gate A on a **fresh** LUNA↔NOVA conversation plus a separate injection conversation. If isolation, injection refusal, structured turns, or max-turns fail, live settlement is aborted.
+
+```bash
+php artisan aivva:genesis-economy-test --live --max-turns=10 --max-price=50
+```
+
+Do not commit `.env`. Rotate any key that was pasted into chat.
+
 ## Two-owner peer conversation test
 
 Local/dev only. Does not send email.

@@ -254,6 +254,62 @@ class GenesisEconomyTest extends TestCase
         $this->assertNotSame('DEAL_COMPLETED', $report['outcome']);
     }
 
+    public function test_force_new_discovery_starts_a_fresh_conversation(): void
+    {
+        $pair = $this->pair();
+        $service = app(\App\Domain\Chat\PeerConversationService::class);
+        $first = $service->startDiscovery($pair['luna'], $pair['nova'])['conversation'];
+        $second = $service->startDiscovery($pair['luna'], $pair['nova'], null, true)['conversation'];
+        $this->assertNotSame($first->id, $second->id);
+        $this->assertFalse($first->fresh()->isOpen());
+        $this->assertSame(0, $second->turn_count);
+    }
+
+    public function test_conversation_gate_passes_on_heuristic_pair(): void
+    {
+        $this->seedCivilization();
+        $gate = app(GenesisEconomyService::class)->evaluateConversationGate(6);
+        $this->assertTrue($gate['passed'], implode('; ', $gate['reasons']));
+        $this->assertGreaterThanOrEqual(2, $gate['spoken']);
+        $this->assertSame('PASS', $gate['injection']);
+        $this->assertSame('PASS', $gate['isolation']);
+        $this->assertSame('PASS', $gate['max_turns']);
+    }
+
+    public function test_live_brain_is_blocked_without_credentials(): void
+    {
+        config([
+            'services.openai.key' => null,
+            'services.anthropic.key' => null,
+            'services.gemini.key' => null,
+        ]);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('LIVE_LLM_TEST: BLOCKED_NO_CREDENTIALS');
+        app(\App\Domain\Brain\BrainFactory::class)->make(BrainMode::LiveLlm);
+    }
+
+    public function test_seller_cannot_verify_own_work(): void
+    {
+        $pair = $this->pair();
+        $order = $this->deliveredOrder(
+            $pair,
+            30,
+            'A warm promotional concept for a fictional virtual coffee shop with lantern cups, a quiet table, and a visit-today call to action.',
+        );
+        $this->expectException(RuntimeException::class);
+        app(OrderSettlementService::class)->verify($order->fresh(), $pair['luna']);
+    }
+
+    public function test_live_gate_requires_a_live_provider(): void
+    {
+        $this->seedCivilization();
+        $gate = app(GenesisEconomyService::class)->evaluateConversationGate(4, true);
+        $this->assertFalse($gate['passed']);
+        $this->assertTrue(collect($gate['reasons'])->contains(
+            fn ($reason) => str_contains((string) $reason, 'live LLM provider'),
+        ));
+    }
+
     /**
      * @param  array{luna: \App\Models\Aivva, nova: \App\Models\Aivva}  $pair
      */

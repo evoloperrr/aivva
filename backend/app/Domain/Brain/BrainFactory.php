@@ -36,4 +36,15 @@ class BrainFactory
             || filled(config('services.anthropic.key'))
             || filled(config('services.gemini.key'));
     }
+
+    public function enableLiveRouting(string $model = 'gpt-4o-mini'): void
+    {
+        foreach (['peer_turn', 'economic_turn', 'create', 'verify', 'order_verify', 'memory_summary'] as $purpose) {
+            config([
+                "aivva.models.routing.{$purpose}.provider" => 'openai',
+                "aivva.models.routing.{$purpose}.model" => $model,
+            ]);
+        }
+        config(['aivva.brain.mode' => BrainMode::LiveLlm->value]);
+    }
 }
