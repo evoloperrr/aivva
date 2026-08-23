@@ -70,6 +70,7 @@ services:
         value: phpredis
       - key: REDIS_URL
         fromService:
+          type: keyvalue
           name: aivva-redis
           property: connectionString
       - key: MAIL_MAILER
