@@ -55,6 +55,15 @@ class RunGenesisEconomyTest extends Command
             $this->line('LIVE max turns held: '.$gate['max_turns']);
             $this->line('LIVE providers: '.implode(',', $gate['live_providers'] ?: ['none']));
             $this->line('Conversation: '.$gate['conversation_id']);
+            foreach ($gate['loop_results'] ?? [] as $i => $row) {
+                $this->line(sprintf(
+                    '  loop %d ok=%s action=%s reason=%s',
+                    $i + 1,
+                    ($row['ok'] ?? false) ? 'yes' : 'no',
+                    $row['action'] ?? '-',
+                    $row['reason'] ?? '-',
+                ));
+            }
             if (! $gate['passed']) {
                 $this->error('GATE_A_FAILED: live economic settlement aborted.');
                 foreach ($gate['reasons'] as $reason) {

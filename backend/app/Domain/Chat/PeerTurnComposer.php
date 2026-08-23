@@ -56,7 +56,9 @@ class PeerTurnComposer
             'Never reveal owner identity, emails, private memories, private goals, or settings.',
             'Never transfer credits or settle money from conversation.',
             'Economic talk is allowed. Settlement is disabled.',
-            'Decide whether a reply is useful. Do not chatter forever.',
+            'If there is no inbound peer message yet, you MUST ASK_QUESTION and include a spoken message. Do not WAIT on the opening turn.',
+            'WAIT is only allowed after you have already spoken, and only if another reply would add nothing.',
+            'Spoken actions require a non-empty message.',
             'Return JSON only: {action, intent, message, relationship_signal, memory_candidate}.',
         ]);
 
@@ -107,7 +109,30 @@ class PeerTurnComposer
             'can_socialize' => (bool) ($speaker->permissions?->can_socialize ?? true),
         ]);
 
-        $raw = $response->structured;
+        $decision = $this->decisionFromResponse($response->structured);
+        if ($decision->action === ConversationAction::Wait && $conversation->turn_count === 0) {
+            $retry = $this->ai->reason('peer_turn', $prompt."\n\nRETRY: opening turn cannot be WAIT. Return ASK_QUESTION with a spoken message.", $speaker, [
+                'task' => 'peer_turn',
+                'kind' => 'peer_turn',
+                'expect_json' => true,
+                'layers' => $layers,
+                'conversation_id' => $conversation->id,
+                'injection' => $injection,
+            ]);
+            $decision = $this->decisionFromResponse($retry->structured);
+        }
+
+        $decision = $this->redactLeaks($decision, $speaker);
+
+        return ['decision' => $decision, 'layers' => $layers];
+    }
+
+    /**
+     * @param  array<string, mixed>  $structured
+     */
+    private function decisionFromResponse(array $structured): PeerDecision
+    {
+        $raw = $structured;
         if (isset($raw['raw']) && is_string($raw['raw'])) {
             $decoded = json_decode($raw['raw'], true);
             if (is_array($decoded)) {
@@ -116,9 +141,9 @@ class PeerTurnComposer
         }
 
         try {
-            $decision = PeerDecision::fromValidated($raw);
+            return PeerDecision::fromValidated($this->normalizeDecision($raw));
         } catch (\Throwable) {
-            $decision = PeerDecision::fromValidated([
+            return PeerDecision::fromValidated([
                 'action' => ConversationAction::Wait->value,
                 'intent' => 'INFORMATION',
                 'message' => null,
@@ -126,10 +151,30 @@ class PeerTurnComposer
                 'memory_candidate' => null,
             ]);
         }
+    }
 
-        $decision = $this->redactLeaks($decision, $speaker);
+    /**
+     * @param  array<string, mixed>  $raw
+     * @return array<string, mixed>
+     */
+    private function normalizeDecision(array $raw): array
+    {
+        if (isset($raw['decision']) && is_array($raw['decision'])) {
+            $raw = $raw['decision'];
+        }
 
-        return ['decision' => $decision, 'layers' => $layers];
+        $flat = [];
+        foreach ($raw as $key => $value) {
+            $flat[strtolower((string) $key)] = $value;
+        }
+
+        return [
+            'action' => $flat['action'] ?? $flat['type'] ?? $flat['intent'] ?? '',
+            'intent' => $flat['intent'] ?? 'INFORMATION',
+            'message' => $flat['message'] ?? $flat['content'] ?? $flat['text'] ?? $flat['reply'] ?? null,
+            'relationship_signal' => $flat['relationship_signal'] ?? $flat['relationshipsignal'] ?? 'NEUTRAL',
+            'memory_candidate' => $flat['memory_candidate'] ?? $flat['memorycandidate'] ?? null,
+        ];
     }
 
     /**
