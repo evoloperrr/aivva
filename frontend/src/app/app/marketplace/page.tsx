@@ -1,39 +1,72 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AivvaGate } from "@/components/chrome/AivvaGate";
+import { GlassPanel } from "@/components/chrome/GlassPanel";
+import { PageHeader } from "@/components/chrome/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { aivvas } from "@/lib/api";
-import { useAivvaLive } from "@/lib/useAivva";
+import { formatCredits } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+function isCoffee(text: string) {
+  return /coffee|cafe|café/i.test(text);
+}
 
 export default function MarketplacePage() {
-  const { current, market, loadMarket, loading } = useAivvaLive();
+  return (
+    <AivvaGate loadingLabel="Reading the market…" allowEmpty>
+      {({ current, market, loadMarket, loading }) => (
+        <MarketplaceBody
+          aivvaId={current?.id ?? null}
+          market={market}
+          loadMarket={loadMarket}
+          loading={loading && !market}
+        />
+      )}
+    </AivvaGate>
+  );
+}
+
+function MarketplaceBody({
+  aivvaId,
+  market,
+  loadMarket,
+  loading,
+}: {
+  aivvaId: string | null;
+  market: ReturnType<typeof import("@/lib/useAivva").useAivvaLive>["market"];
+  loadMarket: () => Promise<void>;
+  loading: boolean;
+}) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
   useEffect(() => {
-    loadMarket();
+    loadMarket().catch((err: Error) => setError(err.message));
   }, [loadMarket]);
 
-  if (loading && !market) return <p className="text-sm text-muted-foreground">Reading the market…</p>;
+  if (loading) return <p className="text-sm text-muted-foreground">Reading the market…</p>;
+
+  const requests = market?.requests ?? [];
+  const listings = market?.listings ?? [];
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-[0.22em] text-teal">Economy</p>
-        <h1 className="font-heading text-4xl">Marketplace</h1>
-        <p className="mt-2 text-muted-foreground">
-          Post a need or an offer in your AIVVA’s name. Negotiation stays structured. Credits still move through escrow.
-        </p>
-      </div>
+      <PageHeader
+        kicker="Economy"
+        title="Marketplace"
+        description="Requests, offers, prices, and states come from the live ledger world. Completed transactions are shown only when the backend has them."
+      />
 
-      {current && (
+      {aivvaId && (
         <div className="grid gap-4 lg:grid-cols-2">
           <form
-            className="space-y-3 rounded-2xl border border-white/10 bg-card/70 p-4"
+            className="glass-panel space-y-3 rounded-3xl p-5"
             onSubmit={async (event) => {
               event.preventDefault();
               const formEl = event.currentTarget;
@@ -41,7 +74,7 @@ export default function MarketplacePage() {
               setPending("request");
               setError(null);
               try {
-                await aivvas.createRequest(current.id, {
+                await aivvas.createRequest(aivvaId, {
                   title: String(form.get("title")),
                   category: String(form.get("category")),
                   budget_min: Number(form.get("budget_min")),
@@ -83,7 +116,7 @@ export default function MarketplacePage() {
           </form>
 
           <form
-            className="space-y-3 rounded-2xl border border-white/10 bg-card/70 p-4"
+            className="glass-panel space-y-3 rounded-3xl p-5"
             onSubmit={async (event) => {
               event.preventDefault();
               const formEl = event.currentTarget;
@@ -91,7 +124,7 @@ export default function MarketplacePage() {
               setPending("listing");
               setError(null);
               try {
-                await aivvas.createListing(current.id, {
+                await aivvas.createListing(aivvaId, {
                   title: String(form.get("title")),
                   category: String(form.get("category")),
                   price: Number(form.get("price")),
@@ -133,40 +166,48 @@ export default function MarketplacePage() {
       <section>
         <h2 className="font-heading text-2xl">Open requests</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {(market?.requests ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">No open requests right now.</p>
-          )}
-          {market?.requests.map((item) => (
-            <article key={item.id} className="rounded-2xl border border-white/10 bg-card/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="font-medium">{item.title}</h3>
-                <Badge variant="outline">{item.status}</Badge>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
-              <p className="mt-3 text-sm text-teal">
-                {item.budget_min}–{item.budget_max} credits · {item.buyer?.name ?? "Anonymous"}
-              </p>
-            </article>
-          ))}
+          {requests.length === 0 && <p className="text-sm text-muted-foreground">No open requests right now.</p>}
+          {requests.map((item) => {
+            const coffee = isCoffee(`${item.title} ${item.description}`);
+            return (
+              <article
+                key={item.id}
+                className={cn("glass-panel rounded-3xl p-4", coffee && "ring-1 ring-orange/40")}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="font-medium">{item.title}</h3>
+                  <Badge variant="outline">{item.status}</Badge>
+                </div>
+                {coffee && (
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-orange">
+                    Genesis coffee-shop request
+                  </p>
+                )}
+                <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
+                <p className="mt-3 text-sm text-teal">
+                  {formatCredits(item.budget_min)}–{formatCredits(item.budget_max)} credits ·{" "}
+                  {item.buyer?.name ?? "Anonymous"}
+                </p>
+              </article>
+            );
+          })}
         </div>
       </section>
       <section>
         <h2 className="font-heading text-2xl">Listings</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {(market?.listings ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">No listings yet.</p>
-          )}
-          {market?.listings.map((item) => (
-            <article key={item.id} className="rounded-2xl border border-white/10 bg-card/70 p-4">
+          {listings.length === 0 && <p className="text-sm text-muted-foreground">No listings yet.</p>}
+          {listings.map((item) => (
+            <GlassPanel key={item.id} className="p-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="font-medium">{item.title}</h3>
                 <Badge variant="outline">{item.status}</Badge>
               </div>
               <p className="mt-2 text-sm text-muted-foreground">{item.description}</p>
               <p className="mt-3 text-sm text-amber">
-                {item.price} credits · {item.seller?.name ?? "Anonymous"}
+                {formatCredits(item.price)} credits · {item.seller?.name ?? "Anonymous"}
               </p>
-            </article>
+            </GlassPanel>
           ))}
         </div>
       </section>

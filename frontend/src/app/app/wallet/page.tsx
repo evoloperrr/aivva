@@ -1,58 +1,98 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AivvaGate } from "@/components/chrome/AivvaGate";
+import { GlassPanel } from "@/components/chrome/GlassPanel";
+import { PageHeader } from "@/components/chrome/PageHeader";
+import { StatusCard } from "@/components/chrome/StatusCard";
 import { aivvas, type OrderRecord, type WalletRecord } from "@/lib/api";
-import { useAivvaLive } from "@/lib/useAivva";
+import { LOCAL_TEST_ECONOMY_BANNER } from "@/lib/copy";
+import { formatClock, formatCredits } from "@/lib/format";
 
 export default function WalletPage() {
-  const { current } = useAivvaLive();
+  return (
+    <AivvaGate loadingLabel="Opening the ledger…">
+      {({ current }) => {
+        if (!current) return null;
+        return <WalletBody aivvaId={current.id} aivvaName={current.name} fallback={current.wallet} />;
+      }}
+    </AivvaGate>
+  );
+}
+
+function WalletBody({
+  aivvaId,
+  aivvaName,
+  fallback,
+}: {
+  aivvaId: string;
+  aivvaName: string;
+  fallback: { available: number; held: number; earned_today: number; spent_today: number; currency: string };
+}) {
   const [wallet, setWallet] = useState<WalletRecord | null>(null);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!current) return;
-    aivvas.wallet(current.id).then((res) => {
-      setWallet(res.wallet);
-      setOrders(res.orders);
-    });
-  }, [current?.id]);
-
-  if (!current) return <p className="text-sm text-muted-foreground">Create an AIVVA to open a wallet.</p>;
+    aivvas
+      .wallet(aivvaId)
+      .then((res) => {
+        setWallet(res.wallet);
+        setOrders(res.orders);
+      })
+      .catch((err: Error) => setError(err.message));
+  }, [aivvaId]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-[0.22em] text-teal">Ledger</p>
-        <h1 className="font-heading text-4xl">Wallet</h1>
-        <p className="mt-2 text-muted-foreground">
-          AIVVA Credits are internal platform units. They are not cryptocurrency and cannot be withdrawn.
-        </p>
+      <PageHeader
+        kicker="Ledger"
+        title={`${aivvaName} wallet`}
+        description="Balances and orders are read from the double-entry ledger. Nothing here is a bank account."
+      />
+      <div className="rounded-2xl border border-orange/40 bg-orange/10 px-4 py-3 text-sm text-orange">
+        {LOCAL_TEST_ECONOMY_BANNER}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-2xl border border-white/10 bg-card/70 p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Available</p>
-          <p className="mt-2 font-heading text-4xl text-teal">{wallet?.available_balance ?? current.wallet.available}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-card/70 p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Held in escrow</p>
-          <p className="mt-2 font-heading text-4xl text-amber">{wallet?.held_balance ?? current.wallet.held}</p>
-        </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatusCard
+          label="Available"
+          value={formatCredits(wallet?.available_balance ?? fallback.available)}
+          hint={fallback.currency}
+          tone="teal"
+        />
+        <StatusCard
+          label="Held in escrow"
+          value={formatCredits(wallet?.held_balance ?? fallback.held)}
+          hint="Locked until settlement"
+          tone="amber"
+        />
+        <StatusCard label="Earned today" value={formatCredits(fallback.earned_today)} tone="blue" />
+        <StatusCard label="Spent today" value={formatCredits(fallback.spent_today)} tone="orange" />
       </div>
-      <section className="rounded-2xl border border-white/10 bg-card/70 p-5">
+      <GlassPanel className="p-5">
         <h2 className="font-heading text-2xl">Orders</h2>
         {orders.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">No marketplace orders yet.</p>
+          <p className="mt-3 text-sm text-muted-foreground">No marketplace orders yet. None are invented here.</p>
         ) : (
           <ul className="mt-4 divide-y divide-white/5">
-            {orders.map((order) => (
-              <li key={order.id} className="flex items-center justify-between py-3 text-sm">
-                <span>{order.status}</span>
-                <span className="font-mono text-teal">{order.amount} cr</span>
-              </li>
-            ))}
+            {orders.map((order) => {
+              const side = order.seller_aivva_id === aivvaId ? "Sold" : "Bought";
+              return (
+                <li key={order.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+                  <div>
+                    <p>
+                      {side} · {order.status}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{formatClock(order.created_at)}</p>
+                  </div>
+                  <span className="font-mono text-teal">{formatCredits(order.amount)} cr</span>
+                </li>
+              );
+            })}
           </ul>
         )}
-      </section>
+      </GlassPanel>
     </div>
   );
 }

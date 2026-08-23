@@ -1,246 +1,123 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { ActivityFeed } from "@/components/aivva/ActivityFeed";
-import { OwnerChat } from "@/components/aivva/OwnerChat";
-import { Portrait } from "@/components/brand/Portrait";
-import { LivingMap } from "@/components/world/LivingMap";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { CharacterCard } from "@/components/aivva/CharacterCard";
+import { DirectionForm } from "@/components/aivva/DirectionForm";
+import { AivvaGate } from "@/components/chrome/AivvaGate";
+import { GlassPanel } from "@/components/chrome/GlassPanel";
+import { StatusCard } from "@/components/chrome/StatusCard";
+import { buttonVariants } from "@/components/ui/button";
+import { formatCredits, formatSignedCredits } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { aivvas, type Interpretation } from "@/lib/api";
-import { useAivvaLive } from "@/lib/useAivva";
 
-function hoursActive(iso: string | null) {
-  if (!iso) return "not yet activated";
-  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${m}m`;
-}
-
-export default function CommandPage() {
-  const { current, activity, map, loading, error, refresh } = useAivvaLive();
-  const [direction, setDirection] = useState("Find ethical ways to create income using creative skills.");
-  const [interpretation, setInterpretation] = useState<Interpretation | null>(null);
-  const [goalId, setGoalId] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [localError, setLocalError] = useState<string | null>(null);
-
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading your AIVVA…</p>;
-  }
-
-  if (!current) {
-    return (
-      <div className="rounded-3xl border border-dashed border-white/15 px-6 py-16 text-center">
-        <h1 className="font-heading text-3xl">No AIVVA yet</h1>
-        <p className="mt-2 text-muted-foreground">Create one to give the city a new life.</p>
-        <Link href="/app/create" className={cn(buttonVariants(), "mt-6")}>
-          Create AIVVA
-        </Link>
-      </div>
-    );
-  }
-
-  const net = current.wallet.earned_today - current.wallet.spent_today;
-
+export default function HomePage() {
   return (
-    <div className="space-y-6">
-      <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-3xl border border-white/10 bg-card/70 p-6">
-          <div className="flex items-start gap-4">
-            <Portrait name={current.name} seed={current.profile?.portrait_seed} size={72} />
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-[0.22em] text-teal">Welcome back</p>
-              <h1 className="font-heading text-4xl">{current.name}</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Active for {hoursActive(current.activated_at)}. City clock {current.world_clock}.
-              </p>
-            </div>
-            <span className="ml-auto rounded-full bg-white/5 px-3 py-1 text-xs uppercase tracking-wider text-teal">
-              {current.status_label}
-            </span>
-          </div>
-          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">Location</dt>
-              <dd className="mt-1">{current.location?.district?.name ?? current.location?.name ?? "Unknown"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">Goal</dt>
-              <dd className="mt-1">{current.goal?.raw_direction ?? "No active direction"}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">Activity</dt>
-              <dd className="mt-1">{current.status_label}</dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">Today</dt>
-              <dd className="mt-1">
-                Earned {current.wallet.earned_today} · Spent {current.wallet.spent_today} · Net {net >= 0 ? "+" : ""}
-                {net}
-              </dd>
-            </div>
-          </dl>
-          <div className="mt-6 grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-2xl bg-white/5 px-3 py-3">
-              <p className="font-heading text-2xl text-teal">{current.wallet.available}</p>
-              <p className="text-xs text-muted-foreground">Credits</p>
-            </div>
-            <div className="rounded-2xl bg-white/5 px-3 py-3">
-              <p className="font-heading text-2xl text-amber">{current.life_points}</p>
-              <p className="text-xs text-muted-foreground">Life Points</p>
-            </div>
-            <div className="rounded-2xl bg-white/5 px-3 py-3">
-              <p className="font-heading text-2xl text-violet">{current.trust?.overall ?? 50}</p>
-              <p className="text-xs text-muted-foreground">Trust</p>
-            </div>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {current.status === "DORMANT" || current.status === "PAUSED" ? (
-              <Button
-                type="button"
-                onClick={async () => {
-                  setBusy("activate");
-                  await aivvas.activate(current.id);
-                  await refresh();
-                  setBusy(null);
-                }}
-                disabled={busy === "activate"}
-              >
-                Activate
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={async () => {
-                  setBusy("pause");
-                  await aivvas.pause(current.id);
-                  await refresh();
-                  setBusy(null);
-                }}
-              >
-                Pause
-              </Button>
-            )}
-            <Button type="button" variant="outline" onClick={() => aivvas.recall(current.id).then(refresh)}>
-              Recall home
-            </Button>
-            <Button type="button" variant="outline" onClick={() => aivvas.stopSpending(current.id).then(refresh)}>
-              Stop spending
-            </Button>
-            <Button type="button" variant="outline" onClick={() => aivvas.cancelGoal(current.id).then(refresh)}>
-              Cancel goal
-            </Button>
-          </div>
-        </div>
+    <AivvaGate loadingLabel="Loading your AIVVA…">
+      {({ current, activity, refresh }) => {
+        if (!current) return null;
+        const location =
+          current.location?.name ??
+          current.location?.district?.name ??
+          "Location unknown";
+        const destination = current.movement.traveling ? current.movement.to?.name : null;
 
-        <div className="rounded-3xl border border-white/10 bg-card/70 p-6">
-          <h2 className="font-heading text-2xl">Give AIVVA direction</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The system interprets first. You confirm before it becomes an active goal.
-          </p>
-          <Textarea className="mt-4" value={direction} onChange={(e) => setDirection(e.target.value)} rows={4} />
-          <div className="mt-3 flex gap-2">
-            <Button
-              type="button"
-              onClick={async () => {
-                setBusy("interpret");
-                setLocalError(null);
-                try {
-                  const res = await aivvas.interpret(current.id, direction);
-                  setInterpretation(res.interpretation);
-                  setGoalId(res.goal_id);
-                } catch (err) {
-                  setLocalError(err instanceof Error ? err.message : "Could not interpret.");
-                } finally {
-                  setBusy(null);
-                }
-              }}
-              disabled={busy === "interpret"}
-            >
-              Interpret
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!goalId || !interpretation?.allowed}
-              onClick={async () => {
-                if (!goalId) return;
-                setBusy("confirm");
-                await aivvas.confirm(current.id, goalId);
-                setInterpretation(null);
-                setGoalId(null);
-                await refresh();
-                setBusy(null);
-              }}
-            >
-              Confirm
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => { setInterpretation(null); setGoalId(null); }}>
-              Cancel
-            </Button>
-          </div>
-          {(localError || error) && <p className="mt-3 text-sm text-destructive">{localError || error}</p>}
-          {interpretation && (
-            <div className="mt-4 rounded-2xl bg-white/5 p-4 text-sm">
-              {!interpretation.allowed ? (
-                <p className="text-destructive">{interpretation.reason}</p>
-              ) : (
-                <div className="space-y-2">
-                  <p>
-                    <span className="text-muted-foreground">Type · </span>
-                    {interpretation.goal.goal_type}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Constraints · </span>
-                    {interpretation.goal.ethical_constraint.join(", ")}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Risk · </span>
-                    {interpretation.goal.risk_level}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Estimated spend · </span>
-                    {interpretation.estimated_cost} credits
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Permissions · </span>
-                    {interpretation.permissions_needed.join(", ")}
-                  </p>
+        return (
+          <div className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+              <CharacterCard aivva={current} />
+              <GlassPanel className="p-6">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-blue">Now</p>
+                <h2 className="mt-1 font-heading text-3xl">{current.status_label}</h2>
+                <dl className="mt-4 space-y-3 text-sm">
+                  <div>
+                    <dt className="text-xs uppercase tracking-wider text-muted-foreground">Location</dt>
+                    <dd className="mt-1">
+                      {current.movement.traveling && destination
+                        ? `Traveling toward ${destination}`
+                        : location}
+                      {current.location?.district?.name ? ` · ${current.location.district.name}` : ""}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wider text-muted-foreground">Goal</dt>
+                    <dd className="mt-1">{current.goal?.raw_direction ?? "No active direction"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs uppercase tracking-wider text-muted-foreground">Last activity</dt>
+                    <dd className="mt-1">
+                      {activity[0]?.headline ?? "Nothing has been logged while you were away."}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link href="/app/world" className={cn(buttonVariants({ variant: "outline" }))}>
+                    Open world
+                  </Link>
+                  <Link href="/app/aivva" className={cn(buttonVariants({ variant: "ghost" }))}>
+                    Full identity
+                  </Link>
                 </div>
-              )}
+              </GlassPanel>
             </div>
-          )}
-        </div>
-      </section>
 
-      <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-        <LivingMap map={map} aivva={current} />
-        <div className="rounded-3xl border border-white/10 bg-card/70 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-heading text-2xl">Activity</h2>
-            <span className="text-xs text-muted-foreground">Explainable events only</span>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <StatusCard
+                label="Location"
+                value={current.location?.district?.name ?? current.location?.name ?? "Unknown"}
+                hint={current.location?.name ?? "No published place"}
+                tone="blue"
+              />
+              <StatusCard label="Activity" value={current.status_label} hint={current.status} tone="teal" />
+              <StatusCard
+                label="Today's earnings"
+                value={formatCredits(current.wallet.earned_today)}
+                hint={current.wallet.currency}
+                tone="teal"
+              />
+              <StatusCard
+                label="Today's spending"
+                value={formatCredits(current.wallet.spent_today)}
+                hint={`Limit ${formatCredits(current.budgets.spend_limit)}`}
+                tone="orange"
+              />
+              <StatusCard label="Life points" value={formatCredits(current.life_points)} tone="amber" />
+              <StatusCard
+                label="Trust"
+                value={current.trust ? formatCredits(current.trust.overall) : "Unknown"}
+                hint={current.trust ? "Overall score" : "No trust dimensions recorded"}
+                tone="violet"
+              />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+              <GlassPanel className="p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-heading text-2xl">While you were away</h2>
+                    <p className="text-xs text-muted-foreground">Explainable events only. No private reasoning.</p>
+                  </div>
+                  <Link href="/app/activity" className="text-xs uppercase tracking-[0.16em] text-teal">
+                    All activity
+                  </Link>
+                </div>
+                <ActivityFeed
+                  items={activity}
+                  limit={8}
+                  empty={`${current.name} has no recorded activity yet.`}
+                />
+              </GlassPanel>
+              <GlassPanel className="p-5">
+                <DirectionForm aivva={current} onChanged={refresh} />
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Net today {formatSignedCredits(current.wallet.earned_today - current.wallet.spent_today)} credits ·
+                  available {formatCredits(current.wallet.available)}
+                </p>
+              </GlassPanel>
+            </div>
           </div>
-          <ActivityFeed
-            items={activity}
-            empty={`${current.name} is waiting for a confirmed direction.`}
-          />
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-white/10 bg-card/70 p-5">
-        <h2 className="font-heading text-2xl">Talk with {current.name}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Ask where they are. Chat cannot spend credits or replace a confirmed direction.
-        </p>
-        <div className="mt-4">
-          <OwnerChat aivvaId={current.id} name={current.name} />
-        </div>
-      </section>
-    </div>
+        );
+      }}
+    </AivvaGate>
   );
 }

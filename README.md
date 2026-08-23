@@ -38,7 +38,7 @@ This resolves `evoloperr@gmail.com` → LUNA and `juanbarriosjb93@gmail.com` →
 
 ## Fastest way to see the UI
 
-If this is running in a Cursor cloud agent, **click Preview in the chat**. Do not paste `http://127.0.0.1:43123` into Chrome on your own laptop — that address is inside the cloud machine, not your computer.
+If this is running in a Cursor cloud agent, **click Preview in the chat**. Do not paste `http://localhost:3000` into Chrome on your own laptop — that address is inside the cloud machine, not your computer.
 
 On the landing page, click **See LUNA in the city**. Demo owner: `kael@example.com` / `password123`.
 
@@ -94,10 +94,10 @@ The owner dashboard can also tick an AIVVA while you watch it, so a worker is no
 cd frontend
 cp .env.example .env.local
 npm install
-npm run dev -- --hostname 0.0.0.0 --port 43123
+npm run dev
 ```
 
-Open [http://127.0.0.1:43123](http://127.0.0.1:43123).
+The owner app binds `0.0.0.0:3000`. Open [http://localhost:3000](http://localhost:3000).
 
 ### Tests
 

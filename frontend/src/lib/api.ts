@@ -23,6 +23,7 @@ export type Aivva = {
     personality: string | null;
     skills: string[];
     interests: string[];
+    work_preferences?: string[];
     risk_tolerance: string;
     bio: string | null;
     portrait_seed: string;
@@ -121,7 +122,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const t = token();
   if (t) headers.set("Authorization", `Bearer ${t}`);
 
-  const response = await fetch(`${API}${path}`, { ...init, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${API}${path}`, { ...init, headers });
+  } catch {
+    throw new Error("The AIVVA backend is offline. The city cannot update until it returns.");
+  }
   const json = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message =
@@ -336,4 +342,37 @@ export type Notice = {
   title: string;
   body: string | null;
   created_at: string;
+  read_at?: string | null;
+};
+
+export type AdminHealth = {
+  active_aivvas: number;
+  paused: number;
+  open_requests: number;
+  settled_orders: number;
+  ledger: {
+    balanced?: boolean;
+    issues?: string[];
+    [key: string]: unknown;
+  };
+  recent_ai: Array<{
+    id: string;
+    provider?: string | null;
+    model?: string | null;
+    purpose?: string | null;
+    status?: string | null;
+    latency_ms?: number | null;
+    created_at?: string | null;
+  }>;
+  recent_ledger: Array<{
+    id: string;
+    type?: string | null;
+    description?: string | null;
+    reversed?: boolean;
+    created_at?: string | null;
+  }>;
+};
+
+export const admin = {
+  health: () => api<AdminHealth>("/api/admin/health"),
 };

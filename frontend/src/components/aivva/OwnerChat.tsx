@@ -25,7 +25,7 @@ export function OwnerChat({ aivvaId, name }: { aivvaId: string; name: string }) 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Talk with {name}. This is not a second control stick — confirm new directions in Command.
+            Talk with {name}. This is not a second control stick — confirm new directions from Home or My AIVVA.
           </p>
         )}
         {messages.map((row) => (

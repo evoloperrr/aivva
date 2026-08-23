@@ -20,7 +20,7 @@ export default function LoginPage() {
   return (
     <div className="grid min-h-screen place-items-center px-4">
       <form
-        className="w-full max-w-md rounded-3xl border border-white/10 bg-card/80 p-8"
+        className="holo-frame w-full max-w-md rounded-3xl p-8"
         onSubmit={async (event) => {
           event.preventDefault();
           setPending(true);

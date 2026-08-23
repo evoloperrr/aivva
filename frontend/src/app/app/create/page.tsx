@@ -63,7 +63,7 @@ export default function CreateAivvaPage() {
         </p>
       </div>
 
-      <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-card/50 p-4">
+      <div className="holo-frame flex items-center gap-4 rounded-2xl p-4">
         <Portrait name={name || "A"} seed={portrait} size={72} />
         <div className="min-w-0">
           <p className="font-heading text-2xl">{name || "Unnamed"}</p>

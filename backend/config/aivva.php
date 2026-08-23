@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:43123'),
+    'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),
 
     'starter_credits' => (int) env('STARTER_CREDITS', 100),
 
