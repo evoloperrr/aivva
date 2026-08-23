@@ -62,19 +62,30 @@ function useAivvaLiveState(): AivvaLiveState {
   }, []);
 
   useEffect(() => {
-    refresh()
-      .catch((err: Error) => {
-        setError(err.message);
-        setOffline(err.message.includes("offline"));
-      })
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    queueMicrotask(() => {
+      refresh()
+        .catch((err: Error) => {
+          if (cancelled) return;
+          setError(err.message);
+          setOffline(err.message.includes("offline"));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
+  const currentId = current?.id;
+
   useEffect(() => {
-    if (!current) return;
+    if (!currentId) return;
     const id = window.setInterval(async () => {
       try {
-        const live = await aivvas.live(current.id);
+        const live = await aivvas.live(currentId);
         setCurrent(live.data);
         setActivity(live.activity);
         setMap(await world.map());
@@ -87,7 +98,7 @@ function useAivvaLiveState(): AivvaLiveState {
       }
     }, 2800);
     return () => window.clearInterval(id);
-  }, [current?.id]);
+  }, [currentId]);
 
   const loadMarket = useCallback(async () => {
     setMarket(await world.marketplace());

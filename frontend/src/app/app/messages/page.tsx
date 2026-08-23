@@ -29,16 +29,24 @@ function MessagesBody({ aivvaId, aivvaName }: { aivvaId: string; aivvaName: stri
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     aivvas
       .conversations(aivvaId)
       .then((res) => {
+        if (cancelled) return;
         setConversations(res.data);
         setSelectedId((current) => current ?? res.data[0]?.id ?? null);
         setError(null);
       })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err: Error) => {
+        if (!cancelled) setError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [aivvaId]);
 
   const thread = useMemo(

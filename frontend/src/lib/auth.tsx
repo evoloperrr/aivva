@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem("aivva_token");
     if (!token) {
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
     auth
