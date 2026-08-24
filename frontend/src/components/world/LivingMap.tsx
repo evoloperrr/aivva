@@ -14,6 +14,7 @@ import {
   paddedRing,
   placeLngLat,
   ringCenter,
+  unprojectLngLat,
 } from "@/lib/geo";
 import { visibleLabelIds, type AtlasLabel } from "@/lib/mapLabels";
 import { cn } from "@/lib/utils";
@@ -148,9 +149,13 @@ function estimateBox(el: HTMLElement, fallbackW: number, fallbackH: number) {
 export function LivingMap({
   map,
   aivva,
+  pickMode = false,
+  onPick,
 }: {
   map: WorldMap | null;
   aivva: Aivva | null;
+  pickMode?: boolean;
+  onPick?: (point: { x: number; y: number; lng: number; lat: number }) => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -227,6 +232,23 @@ export function LivingMap({
     setSource(instance, "districts", districtCollection(map));
     setSource(instance, "route", routeCollection(aivva));
   }, [map, aivva, ready]);
+
+  useEffect(() => {
+    const instance = mapRef.current;
+    if (!instance || !ready) return;
+    instance.getCanvas().style.cursor = pickMode ? "crosshair" : "";
+    if (!pickMode || !onPick) return;
+
+    const onClick = (event: { lngLat: { lng: number; lat: number } }) => {
+      const { lng, lat } = event.lngLat;
+      const { x, y } = unprojectLngLat(lng, lat);
+      onPick({ x, y, lng, lat });
+    };
+    instance.on("click", onClick);
+    return () => {
+      instance.off("click", onClick);
+    };
+  }, [pickMode, onPick, ready]);
 
   useEffect(() => {
     const instance = mapRef.current;

@@ -7,6 +7,7 @@ use App\Domain\Ledger\LedgerService;
 use App\Domain\Trust\TrustService;
 use App\Enums\AivvaStatus;
 use App\Models\Aivva;
+use App\Models\LedgerTransaction;
 use App\Models\Location;
 use App\Models\MarketplaceListing;
 use App\Models\MarketplaceRequest;
@@ -71,8 +72,10 @@ class PlatformCivilizationSeeder extends Seeder
         foreach ([$atlas, $nova] as $aivva) {
             $wallet = $wallets->ensureForAivva($aivva);
             $trust->ensure($aivva);
-            if ($wallet->available_balance < 200) {
-                $ledger->issueToWallet($wallet, 200 - (int) $wallet->available_balance, "Operating float for {$aivva->name}", 'issue:platform:'.$aivva->id);
+            $reference = 'issue:platform:'.$aivva->id;
+            $alreadyIssued = LedgerTransaction::query()->where('reference', $reference)->exists();
+            if (! $alreadyIssued && $wallet->available_balance < 200) {
+                $ledger->issueToWallet($wallet, 200 - (int) $wallet->available_balance, "Operating float for {$aivva->name}", $reference);
             }
         }
 

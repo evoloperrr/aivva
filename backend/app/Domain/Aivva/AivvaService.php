@@ -14,6 +14,7 @@ use App\Enums\GoalStatus;
 use App\Enums\MemoryCategory;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
+use App\Models\District;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -128,6 +129,61 @@ class AivvaService
         ]);
 
         return $aivva->fresh();
+    }
+
+    /**
+     * Owner-picked meeting point (e.g. a spot chosen on the map). Creates a
+     * real Location and sends both AIVVAs there with a plan that ends in a
+     * targeted CONTACT step, instead of the generic goal-type templates.
+     *
+     * @return array{initiator: Aivva, target: Aivva, location: Location}
+     */
+    public function createMeetup(Aivva $initiator, Aivva $target, string $name, float $x, float $y): array
+    {
+        $district = District::query()->firstOrCreate(
+            ['slug' => 'custom-spots'],
+            [
+                'city_id' => $initiator->currentLocation?->district?->city_id ?? District::query()->value('city_id'),
+                'name' => 'Custom Spots',
+                'theme' => 'meetup',
+                'color' => '#22E3D0',
+                'polygon' => [],
+                'description' => 'Owner-picked meeting points on the living map.',
+            ],
+        );
+
+        $location = Location::query()->create([
+            'district_id' => $district->id,
+            'name' => $name,
+            'slug' => Str::slug($name).'-'.Str::lower(Str::random(6)),
+            'type' => 'meetup',
+            'coord_x' => max(0, min(1000, $x)),
+            'coord_y' => max(0, min(640, $y)),
+            'capacity' => 10,
+            'services' => ['meetup'],
+            'description' => 'A meeting point chosen by an owner.',
+        ]);
+
+        foreach ([[$initiator, $target], [$target, $initiator]] as [$owner, $other]) {
+            $goal = $owner->goals()->create([
+                'raw_direction' => "Meet {$other->name} at {$name}",
+                'goal_type' => 'Meetup',
+                'structured' => [
+                    'goal_type' => 'Meetup',
+                    'location_id' => $location->id,
+                    'target_aivva_id' => $other->id,
+                    'meeting_name' => $name,
+                ],
+                'status' => GoalStatus::Draft,
+            ]);
+            $this->confirmDirection($owner, $goal->id);
+        }
+
+        return [
+            'initiator' => $initiator->fresh(['profile', 'permissions', 'currentGoal', 'currentPlan', 'currentLocation.district', 'wallet', 'trustScore']),
+            'target' => $target->fresh(['profile', 'permissions', 'currentGoal', 'currentPlan', 'currentLocation.district', 'wallet', 'trustScore']),
+            'location' => $location,
+        ];
     }
 
     /**

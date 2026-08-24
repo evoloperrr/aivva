@@ -139,6 +139,29 @@ class AivvaController extends Controller
         ]);
     }
 
+    public function meetup(Request $request, Aivva $aivva): JsonResponse
+    {
+        $this->authorizeOwner($request->user(), $aivva);
+
+        $data = $request->validate([
+            'target_aivva_id' => ['required', 'uuid', 'exists:aivvas,id'],
+            'name' => ['required', 'string', 'max:60'],
+            'x' => ['required', 'numeric', 'min:0', 'max:1000'],
+            'y' => ['required', 'numeric', 'min:0', 'max:640'],
+        ]);
+
+        abort_if($data['target_aivva_id'] === $aivva->id, 422, 'Cannot meet itself.');
+
+        $target = Aivva::query()->findOrFail($data['target_aivva_id']);
+
+        $result = $this->aivvas->createMeetup($aivva, $target, $data['name'], (float) $data['x'], (float) $data['y']);
+
+        return response()->json([
+            'data' => new AivvaResource($result['initiator']),
+            'target' => new AivvaResource($result['target']),
+        ], 201);
+    }
+
     private function authorizeOwner(User $user, Aivva $aivva): void
     {
         abort_unless($aivva->owner_id === $user->id || $user->is_admin, 403, 'Not your AIVVA.');
