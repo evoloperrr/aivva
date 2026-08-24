@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Mark } from "@/components/brand/Mark";
 import { Portrait } from "@/components/brand/Portrait";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ function pickMany<T>(pool: T[], min: number, max: number): T[] {
 
 export default function CreateAivvaPage() {
   const router = useRouter();
+  const [step, setStep] = useState<0 | 1>(0);
   const [name, setName] = useState("LUNA");
   const [skills, setSkills] = useState<string[]>(["music"]);
   const [work, setWork] = useState<string[]>(["ethical work"]);
@@ -88,6 +90,31 @@ export default function CreateAivvaPage() {
     setAutonomyLevel(1 + Math.floor(Math.random() * 4));
     setMaxPerTransaction(max);
     setDailySpendLimit(max * (3 + Math.floor(Math.random() * 4)));
+  }
+
+  if (step === 0) {
+    return (
+      <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center gap-8 text-center">
+        <Mark className="bg-gradient-to-r from-teal via-blue to-violet bg-clip-text text-7xl text-transparent sm:text-8xl" />
+        <div>
+          <h1 className="font-heading text-3xl sm:text-4xl">Your AI life starts here</h1>
+          <p className="mt-3 max-w-md text-muted-foreground">
+            One AIVVA. One direction. A living city that responds to what it does.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="lg"
+          className="h-14 px-10 text-base"
+          onClick={() => {
+            generateRandomAivva();
+            setStep(1);
+          }}
+        >
+          🎲 Generate AIVVA
+        </Button>
+      </div>
+    );
   }
 
   return (
