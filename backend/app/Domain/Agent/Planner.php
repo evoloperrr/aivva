@@ -38,6 +38,7 @@ class Planner
                 [ActionType::Reflect, 'Store what was useful'],
             ]),
             'Business' => $this->incomeSteps($creative),
+            'Meetup' => $this->meetupSteps($goal->structured ?? []),
             default => $this->simpleSteps([
                 [ActionType::Travel, 'Walk the city and observe'],
                 [ActionType::ResearchMarket, 'Notice what the city needs'],
@@ -75,6 +76,41 @@ class Planner
             [ActionType::DeliverWork, 'Deliver through escrow and settle'],
             [ActionType::Reflect, 'Remember what worked and look for the next opportunity'],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $structured
+     * @return list<array<string, mixed>>
+     */
+    private function meetupSteps(array $structured): array
+    {
+        $locationId = $structured['location_id'] ?? null;
+        $targetId = $structured['target_aivva_id'] ?? null;
+        $name = $structured['meeting_name'] ?? 'the meeting point';
+
+        return [
+            [
+                'index' => 0,
+                'type' => ActionType::Travel->value,
+                'title' => "Travel to {$name}",
+                'status' => 'PENDING',
+                'payload' => array_filter(['location_id' => $locationId]),
+            ],
+            [
+                'index' => 1,
+                'type' => ActionType::Contact->value,
+                'title' => 'Meet the other AIVVA there',
+                'status' => 'PENDING',
+                'payload' => array_filter(['target_aivva_id' => $targetId, 'peer' => true]),
+            ],
+            [
+                'index' => 2,
+                'type' => ActionType::Reflect->value,
+                'title' => 'Remember the meeting',
+                'status' => 'PENDING',
+                'payload' => [],
+            ],
+        ];
     }
 
     /**

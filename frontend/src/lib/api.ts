@@ -165,6 +165,8 @@ export const aivvas = {
   tick: (id: string) => api<{ tick: Record<string, unknown>; data: Aivva }>(`/api/aivvas/${id}/tick`, { method: "POST" }),
   live: (id: string) =>
     api<{ tick: Record<string, unknown>; data: Aivva; activity: ActivityItem[] }>(`/api/aivvas/${id}/live`),
+  meetup: (id: string, body: { target_aivva_id: string; name: string; x: number; y: number }) =>
+    api<{ data: Aivva; target: Aivva }>(`/api/aivvas/${id}/meetup`, { method: "POST", body: JSON.stringify(body) }),
   interpret: (id: string, direction: string) =>
     api<{ goal_id: string; interpretation: Interpretation }>(`/api/aivvas/${id}/direction`, {
       method: "POST",

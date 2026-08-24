@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENESIS_MAP, landmarkFor, paddedRing, placeLngLat, projectXY } from "./geo";
+import { GENESIS_MAP, landmarkFor, paddedRing, placeLngLat, projectXY, unprojectLngLat } from "./geo";
 import { boxesOverlap, visibleLabelIds } from "./mapLabels";
 
 describe("Genesis overlay projection", () => {
@@ -21,6 +21,19 @@ describe("Genesis overlay projection", () => {
     expect(p.lng).toBeLessThan(GENESIS_MAP.east);
     expect(p.lat).toBeGreaterThan(GENESIS_MAP.south);
     expect(p.lat).toBeLessThan(GENESIS_MAP.north);
+  });
+
+  it("unprojects a real click back to logical x/y (round trip)", () => {
+    const projected = projectXY(500, 320);
+    const back = unprojectLngLat(projected.lng, projected.lat);
+    expect(back.x).toBeCloseTo(500, 0);
+    expect(back.y).toBeCloseTo(320, 0);
+  });
+
+  it("clamps an unprojected click outside the bbox to the grid edges", () => {
+    const back = unprojectLngLat(GENESIS_MAP.west - 1, GENESIS_MAP.north + 1);
+    expect(back.x).toBe(0);
+    expect(back.y).toBe(0);
   });
 });
 

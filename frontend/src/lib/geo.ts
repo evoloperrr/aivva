@@ -55,6 +55,17 @@ export function projectXY(x: number, y: number): LngLat {
   };
 }
 
+/** Inverse of projectXY: a real map click back into Genesis logical x/y (clamped to the grid). */
+export function unprojectLngLat(lng: number, lat: number): { x: number; y: number } {
+  const { width, height, north, south, west, east } = GENESIS_MAP;
+  const nx = (lng - west) / (east - west);
+  const ny = (north - lat) / (north - south);
+  return {
+    x: Math.round(Math.min(width, Math.max(0, nx * width))),
+    y: Math.round(Math.min(height, Math.max(0, ny * height))),
+  };
+}
+
 export function projectPoint(point: { x?: number | null; y?: number | null } | null | undefined): LngLat | null {
   if (!point || point.x == null || point.y == null || Number.isNaN(point.x) || Number.isNaN(point.y)) {
     return null;
