@@ -14,6 +14,7 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
 RUN php -r "file_exists('.env') || copy('.env.example', '.env');" \
+    && mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache/data storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
 COPY docker/nginx.conf.template /etc/nginx/sites-available/default.template
