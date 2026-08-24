@@ -35,6 +35,7 @@ class AivvaController extends Controller
             'risk_tolerance' => ['nullable', 'in:low,moderate,high'],
             'bio' => ['nullable', 'string', 'max:2000'],
             'portrait_seed' => ['nullable', 'string', 'max:80'],
+            'home_location_id' => ['nullable', 'integer', 'exists:locations,id'],
             'autonomy_level' => ['nullable', 'integer', 'min:0', 'max:4'],
             'max_per_transaction' => ['nullable', 'integer', 'min:0', 'max:10000'],
             'daily_spend_limit' => ['nullable', 'integer', 'min:0', 'max:100000'],

@@ -36,7 +36,8 @@ class AivvaService
     public function create(User $owner, array $input): Aivva
     {
         $name = trim((string) $input['name']);
-        $home = Location::query()->where('is_home_template', true)->first()
+        $home = (isset($input['home_location_id']) ? Location::query()->find($input['home_location_id']) : null)
+            ?? Location::query()->where('is_home_template', true)->first()
             ?? Location::query()->where('type', 'home')->first()
             ?? Location::query()->firstOrFail();
 
