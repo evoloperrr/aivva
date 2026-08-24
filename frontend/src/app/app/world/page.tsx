@@ -13,7 +13,7 @@ export default function WorldPage() {
           <PageHeader
             kicker="Living map"
             title="Genesis City"
-            description="A premium logical map of the same world a later Unreal client will render. Districts, paths, and presence come from the backend — not from a street map."
+            description="Real OpenStreetMap streets, live. Genesis districts and AIVVA positions from the backend are projected onto BGC, Taguig. The camera follows your AIVVA while it travels."
           />
           <LivingMap map={map} aivva={current} />
           <div className="grid gap-3 md:grid-cols-3">

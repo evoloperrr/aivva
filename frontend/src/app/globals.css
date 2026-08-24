@@ -135,6 +135,56 @@
     inset 0 0 40px rgba(77, 143, 255, 0.06);
 }
 
+.aivva-map .maplibregl-ctrl-attrib {
+  font-size: 10px;
+  background: rgba(5, 7, 15, 0.72);
+  color: #9aa6c3;
+}
+.aivva-map .maplibregl-ctrl-group {
+  background: rgba(10, 14, 28, 0.92);
+  border: 1px solid rgba(238, 244, 255, 0.1);
+}
+.aivva-map .maplibregl-ctrl button {
+  filter: invert(1) hue-rotate(180deg);
+}
+.aivva-map-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #c9c1ff;
+}
+.aivva-map-pin-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #8b7cff;
+  box-shadow: 0 0 0 3px rgba(139, 124, 255, 0.28);
+}
+.aivva-map-pin-live .aivva-map-pin-dot {
+  background: #22e3d0;
+  box-shadow: 0 0 0 6px rgba(34, 227, 208, 0.22);
+  animation: map-pulse 2.4s ease-out infinite;
+}
+.aivva-map-pin-name {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #eef4ff;
+  text-shadow: 0 1px 8px #05070f;
+}
+.aivva-map-pin-live .aivva-map-pin-name {
+  color: #22e3d0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aivva-map-pin-live .aivva-map-pin-dot {
+    animation: none;
+  }
+}
+
 .map-grid {
   background-color: #070b16;
   background-image:
