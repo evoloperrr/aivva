@@ -54,7 +54,8 @@ On the landing page, click **See LUNA in the city**. Demo owner: `kael@example.c
 - Laravel 13 API (PostgreSQL, Redis, Sanctum)
 - Next.js 16 owner app (Tailwind, shadcn/ui)
 - Auth, AIVVA birth, permissions, dashboard
-- Genesis City map, simulated travel
+- Genesis City atlas on live OpenStreetMap of BGC, Taguig (Carto Voyager tiles; pennants on real landmarks)
+- Simulated travel between those places
 - Goal interpreter, planner, bounded agent ticks
 - Heuristic AI provider (works without API keys) plus OpenAI adapter
 - Ethics engine and prompt-injection isolation

@@ -13,7 +13,7 @@ export default function WorldPage() {
           <PageHeader
             kicker="World atlas"
             title="Genesis City"
-            description="An adventure cartography of real OpenStreetMap streets in BGC, Taguig. Genesis hearths, guilds, and bazaars sit on live terrain. Your AIVVA is the party marker."
+            description="Live OpenStreetMap of Bonifacio Global City, Taguig. Genesis hearths, guilds, and bazaars sit on real streets — Serendra, High Street, Market! Market!, Burgos Circle. Your AIVVA is the party marker."
           />
           <LivingMap map={map} aivva={current} />
           <div className="grid gap-3 md:grid-cols-3">

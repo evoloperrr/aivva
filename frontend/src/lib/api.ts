@@ -88,6 +88,7 @@ export type Aivva = {
 export type MapPlace = {
   id: number;
   name: string;
+  slug?: string;
   type: string;
   x: number;
   y: number;

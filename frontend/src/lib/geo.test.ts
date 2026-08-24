@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GENESIS_MAP, projectXY } from "./geo";
+import { GENESIS_MAP, landmarkFor, paddedRing, placeLngLat, projectXY } from "./geo";
+import { boxesOverlap, visibleLabelIds } from "./mapLabels";
 
 describe("Genesis overlay projection", () => {
   it("maps the northwest logical corner to the north-west of the real bbox", () => {
@@ -14,11 +15,72 @@ describe("Genesis overlay projection", () => {
     expect(p.lat).toBeCloseTo(GENESIS_MAP.south, 5);
   });
 
-  it("keeps Residence 01 (120,480) inside the bbox", () => {
+  it("keeps Residence 01 (120,480) inside the bbox as a fallback", () => {
     const p = projectXY(120, 480);
     expect(p.lng).toBeGreaterThan(GENESIS_MAP.west);
     expect(p.lng).toBeLessThan(GENESIS_MAP.east);
     expect(p.lat).toBeGreaterThan(GENESIS_MAP.south);
     expect(p.lat).toBeLessThan(GENESIS_MAP.north);
+  });
+});
+
+describe("real BGC landmarks", () => {
+  it("pins Residence 01 to Serendra", () => {
+    const p = placeLngLat({ slug: "luna-home", x: 120, y: 480 });
+    expect(p?.lng).toBeCloseTo(121.05376, 4);
+    expect(p?.lat).toBeCloseTo(14.54984, 4);
+    expect(landmarkFor("luna-home")?.osmName).toBe("Serendra");
+  });
+
+  it("pins Central Exchange to Market! Market!", () => {
+    expect(landmarkFor("central-exchange")?.osmName).toBe("Market! Market!");
+  });
+
+  it("falls back to projected x/y when the slug is unknown", () => {
+    const projected = projectXY(10, 10);
+    const p = placeLngLat({ slug: "unknown-place", x: 10, y: 10 });
+    expect(p).toEqual(projected);
+  });
+
+  it("builds a closed padded ring around landmarks", () => {
+    const ring = paddedRing([
+      { lng: 121.05, lat: 14.55 },
+      { lng: 121.051, lat: 14.551 },
+    ]);
+    expect(ring).toHaveLength(5);
+    expect(ring[0]).toEqual(ring[4]);
+    expect(ring[0][0]).toBeLessThan(121.05);
+  });
+});
+
+describe("atlas label collision", () => {
+  it("detects overlapping boxes", () => {
+    expect(boxesOverlap({ x: 0, y: 0, w: 40, h: 10 }, { x: 20, y: 0, w: 40, h: 10 })).toBe(true);
+    expect(boxesOverlap({ x: 0, y: 0, w: 40, h: 10 }, { x: 80, y: 0, w: 40, h: 10 })).toBe(false);
+  });
+
+  it("keeps the actor name and hides a stacked region at close zoom", () => {
+    const visible = visibleLabelIds(
+      [
+        { id: "actor-1", kind: "actor", priority: 1, x: 100, y: 100, w: 50, h: 14 },
+        { id: "region-1", kind: "region", priority: 30, x: 105, y: 102, w: 120, h: 16 },
+        { id: "place-1", kind: "place", priority: 12, x: 108, y: 118, w: 90, h: 14 },
+      ],
+      15.6,
+    );
+    expect(visible.has("actor-1")).toBe(true);
+    expect(visible.has("region-1")).toBe(false);
+    expect(visible.has("place-1")).toBe(true);
+  });
+
+  it("hides a place name that sits on top of an actor", () => {
+    const visible = visibleLabelIds(
+      [
+        { id: "actor-1", kind: "actor", priority: 1, x: 40, y: 40, w: 48, h: 14 },
+        { id: "place-1", kind: "place", priority: 12, x: 42, y: 41, w: 80, h: 14 },
+      ],
+      16,
+    );
+    expect([...visible]).toEqual(["actor-1"]);
   });
 });

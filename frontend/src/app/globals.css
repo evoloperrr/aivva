@@ -149,16 +149,13 @@
 .atlas-stage {
   isolation: isolate;
 }
-.atlas-stage-raster .maplibregl-canvas {
-  filter: sepia(0.45) hue-rotate(18deg) saturate(0.75) contrast(1.12);
-}
 .atlas-vignette {
   pointer-events: none;
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at center, transparent 42%, rgba(8, 12, 10, 0.55) 100%),
-    linear-gradient(180deg, rgba(16, 24, 15, 0.2), transparent 18%, transparent 82%, rgba(16, 24, 15, 0.45));
+    radial-gradient(ellipse at center, transparent 58%, rgba(8, 12, 10, 0.28) 100%),
+    linear-gradient(180deg, rgba(16, 24, 15, 0.08), transparent 14%, transparent 86%, rgba(16, 24, 15, 0.22));
 }
 .atlas-compass {
   pointer-events: none;
@@ -202,11 +199,17 @@
 .atlas-region {
   pointer-events: none;
   font-family: var(--font-heading), Georgia, serif;
-  font-size: 15px;
-  letter-spacing: 0.28em;
+  font-size: 13px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  opacity: 0.55;
-  text-shadow: 0 1px 10px #05070f;
+  opacity: 0.9;
+  -webkit-text-stroke: 0.35px rgba(12, 18, 12, 0.45);
+  text-shadow:
+    0 0 8px #fff,
+    0 1px 8px #fff;
+}
+.atlas-label-hidden {
+  visibility: hidden;
 }
 .atlas-poi {
   display: flex;
@@ -229,11 +232,14 @@
 }
 .atlas-poi-name {
   margin-top: 3px;
-  max-width: 110px;
+  max-width: 108px;
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 8px #05070f;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #1b2414;
+  text-shadow:
+    0 0 6px #fff,
+    0 1px 0 #fff;
 }
 .atlas-actor {
   display: flex;
@@ -265,13 +271,15 @@
 .atlas-actor-name {
   margin-top: 3px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.06em;
-  color: #f4ead0;
-  text-shadow: 0 1px 8px #05070f;
+  color: #2a2158;
+  text-shadow:
+    0 0 6px #fff,
+    0 1px 0 #fff;
 }
 .atlas-actor-party .atlas-actor-name {
-  color: #22e3d0;
+  color: #0a5f58;
 }
 
 .aivva-map .maplibregl-ctrl-attrib {

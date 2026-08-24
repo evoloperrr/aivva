@@ -34,6 +34,7 @@ class Location extends Model
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'slug' => $this->slug,
             'type' => $this->type,
             'x' => $this->coord_x,
             'y' => $this->coord_y,
