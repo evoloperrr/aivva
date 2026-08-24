@@ -1,14 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mark } from "@/components/brand/Mark";
 import { Portrait } from "@/components/brand/Portrait";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { aivvas } from "@/lib/api";
+import { aivvas, world, type MapPlace } from "@/lib/api";
 
 const skillOptions = ["music", "writing", "design", "research", "teaching", "illustration"];
 const workOptions = ["ethical work", "solo making", "collaboration", "teaching others", "quiet research"];
@@ -60,9 +60,11 @@ function pickMany<T>(pool: T[], min: number, max: number): T[] {
   return shuffled.slice(0, count);
 }
 
+const STEP_LABELS = ["Generate", "Location", "Character", "Skills & Work", "Permissions", "Review"];
+
 export default function CreateAivvaPage() {
   const router = useRouter();
-  const [step, setStep] = useState<0 | 1>(0);
+  const [step, setStep] = useState(0);
   const [name, setName] = useState("LUNA");
   const [skills, setSkills] = useState<string[]>(["music"]);
   const [work, setWork] = useState<string[]>(["ethical work"]);
@@ -74,8 +76,19 @@ export default function CreateAivvaPage() {
   const [autonomyLevel, setAutonomyLevel] = useState(3);
   const [maxPerTransaction, setMaxPerTransaction] = useState(50);
   const [dailySpendLimit, setDailySpendLimit] = useState(200);
+  const [locations, setLocations] = useState<MapPlace[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(true);
+  const [homeLocationId, setHomeLocationId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    world
+      .locations()
+      .then((res) => setLocations(res.data))
+      .catch(() => setLocations([]))
+      .finally(() => setLocationsLoading(false));
+  }, []);
 
   function generateRandomAivva() {
     const max = pick(spendPresets);
@@ -90,8 +103,43 @@ export default function CreateAivvaPage() {
     setAutonomyLevel(1 + Math.floor(Math.random() * 4));
     setMaxPerTransaction(max);
     setDailySpendLimit(max * (3 + Math.floor(Math.random() * 4)));
+    if (locations.length > 0) {
+      setHomeLocationId(pick(locations).id);
+    }
   }
 
+  async function handleCreate() {
+    setPending(true);
+    setError(null);
+    try {
+      await aivvas.create({
+        name,
+        personality,
+        bio,
+        interests: interests
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        skills,
+        work_preferences: work,
+        portrait_seed: portrait,
+        risk_tolerance: riskTolerance,
+        autonomy_level: autonomyLevel,
+        max_per_transaction: maxPerTransaction,
+        daily_spend_limit: dailySpendLimit,
+        home_location_id: homeLocationId ?? undefined,
+      });
+      router.push("/app");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create AIVVA.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const selectedLocation = locations.find((l) => l.id === homeLocationId) ?? null;
+
+  // Step 0 — Generate
   if (step === 0) {
     return (
       <div className="mx-auto flex min-h-[70vh] max-w-2xl flex-col items-center justify-center gap-8 text-center">
@@ -117,49 +165,23 @@ export default function CreateAivvaPage() {
     );
   }
 
+  const totalSteps = STEP_LABELS.length - 1; // excludes the generate step
+  const stepIndex = step; // 1..5
+
   return (
-    <form
-      className="mx-auto max-w-2xl space-y-6"
-      onSubmit={async (event) => {
-        event.preventDefault();
-        setPending(true);
-        setError(null);
-        try {
-          await aivvas.create({
-            name,
-            personality,
-            bio,
-            interests: interests
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean),
-            skills,
-            work_preferences: work,
-            portrait_seed: portrait,
-            risk_tolerance: riskTolerance,
-            autonomy_level: autonomyLevel,
-            max_per_transaction: maxPerTransaction,
-            daily_spend_limit: dailySpendLimit,
-          });
-          router.push("/app");
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Could not create AIVVA.");
-        } finally {
-          setPending(false);
-        }
-      }}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-teal">Birth</p>
-          <h1 className="mt-2 font-heading text-4xl">Create your first AIVVA</h1>
-          <p className="mt-2 text-muted-foreground">
-            You are the owner. It will interpret your direction and act inside the permissions you set here.
-          </p>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div className="space-y-2">
+        <p className="text-xs uppercase tracking-[0.22em] text-teal">
+          Step {stepIndex} of {totalSteps} · {STEP_LABELS[step]}
+        </p>
+        <div className="flex gap-1.5">
+          {STEP_LABELS.slice(1).map((label, i) => (
+            <div
+              key={label}
+              className={`h-1.5 flex-1 rounded-full ${i + 1 <= stepIndex ? "bg-teal" : "bg-white/10"}`}
+            />
+          ))}
         </div>
-        <Button type="button" variant="secondary" onClick={generateRandomAivva}>
-          🎲 Generate random AIVVA
-        </Button>
       </div>
 
       <div className="holo-frame flex items-center gap-4 rounded-2xl p-4">
@@ -170,133 +192,205 @@ export default function CreateAivvaPage() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} />
-      </div>
-      <div className="space-y-2">
-        <Label>Portrait</Label>
-        <div className="flex flex-wrap gap-2">
-          {portraits.map((seed) => (
-            <button
-              type="button"
-              key={seed}
-              onClick={() => setPortrait(seed)}
-              className={`rounded-full px-3 py-1 text-sm ${portrait === seed ? "bg-teal text-ink" : "bg-white/5 text-muted-foreground"}`}
-            >
-              {seed}
-            </button>
-          ))}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="font-heading text-2xl">Where does {name || "your AIVVA"} start?</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Its home in Genesis City — it can always travel from here.</p>
+          </div>
+          {locationsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading Genesis City locations…</p>
+          ) : locations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Could not load locations. A default home will be used.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {locations.map((loc) => {
+                const on = homeLocationId === loc.id;
+                return (
+                  <button
+                    type="button"
+                    key={loc.id}
+                    onClick={() => setHomeLocationId(loc.id)}
+                    className={`rounded-xl border p-3 text-left transition-colors ${
+                      on ? "border-teal bg-teal/10" : "border-white/10 bg-white/5 hover:border-white/20"
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide" style={{ color: loc.district.color }}>
+                      {loc.district.name}
+                    </p>
+                    <p className="font-heading text-lg">{loc.name}</p>
+                    {loc.description && <p className="mt-1 text-xs text-muted-foreground">{loc.description}</p>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="personality">Personality</Label>
-        <Textarea
-          id="personality"
-          name="personality"
-          value={personality}
-          onChange={(e) => setPersonality(e.target.value)}
-          rows={3}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="bio">How they see the city</Label>
-        <Textarea id="bio" name="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={2} />
-      </div>
-      <div className="space-y-2">
-        <Label>Skills</Label>
-        <div className="flex flex-wrap gap-2">
-          {skillOptions.map((skill) => {
-            const on = skills.includes(skill);
-            return (
-              <button
-                type="button"
-                key={skill}
-                onClick={() => setSkills((prev) => (on ? prev.filter((s) => s !== skill) : [...prev, skill]))}
-                className={`rounded-full px-3 py-1 text-sm ${on ? "bg-teal text-ink" : "bg-white/5 text-muted-foreground"}`}
+      )}
+
+      {step === 2 && (
+        <div className="space-y-4">
+          <h2 className="font-heading text-2xl">Who are they?</h2>
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={40} />
+          </div>
+          <div className="space-y-2">
+            <Label>Portrait</Label>
+            <div className="flex flex-wrap gap-2">
+              {portraits.map((seed) => (
+                <button
+                  type="button"
+                  key={seed}
+                  onClick={() => setPortrait(seed)}
+                  className={`rounded-full px-3 py-1 text-sm ${portrait === seed ? "bg-teal text-ink" : "bg-white/5 text-muted-foreground"}`}
+                >
+                  {seed}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="personality">Personality</Label>
+            <Textarea id="personality" value={personality} onChange={(e) => setPersonality(e.target.value)} rows={3} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bio">How they see the city</Label>
+            <Textarea id="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={2} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="interests">Interests</Label>
+            <Input id="interests" value={interests} onChange={(e) => setInterests(e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="space-y-4">
+          <h2 className="font-heading text-2xl">What can they do?</h2>
+          <div className="space-y-2">
+            <Label>Skills</Label>
+            <div className="flex flex-wrap gap-2">
+              {skillOptions.map((skill) => {
+                const on = skills.includes(skill);
+                return (
+                  <button
+                    type="button"
+                    key={skill}
+                    onClick={() => setSkills((prev) => (on ? prev.filter((s) => s !== skill) : [...prev, skill]))}
+                    className={`rounded-full px-3 py-1 text-sm ${on ? "bg-teal text-ink" : "bg-white/5 text-muted-foreground"}`}
+                  >
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Work preferences</Label>
+            <div className="flex flex-wrap gap-2">
+              {workOptions.map((item) => {
+                const on = work.includes(item);
+                return (
+                  <button
+                    type="button"
+                    key={item}
+                    onClick={() => setWork((prev) => (on ? prev.filter((s) => s !== item) : [...prev, item]))}
+                    className={`rounded-full px-3 py-1 text-sm ${on ? "bg-amber text-ink" : "bg-white/5 text-muted-foreground"}`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="space-y-4">
+          <h2 className="font-heading text-2xl">What can they risk?</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="risk_tolerance">Risk</Label>
+              <select
+                id="risk_tolerance"
+                value={riskTolerance}
+                onChange={(e) => setRiskTolerance(e.target.value as (typeof riskOptions)[number])}
+                className="h-9 w-full rounded-md border border-white/10 bg-transparent px-3 text-sm"
               >
-                {skill}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>Work preferences</Label>
-        <div className="flex flex-wrap gap-2">
-          {workOptions.map((item) => {
-            const on = work.includes(item);
-            return (
-              <button
-                type="button"
-                key={item}
-                onClick={() => setWork((prev) => (on ? prev.filter((s) => s !== item) : [...prev, item]))}
-                className={`rounded-full px-3 py-1 text-sm ${on ? "bg-amber text-ink" : "bg-white/5 text-muted-foreground"}`}
+                <option value="low">Low</option>
+                <option value="moderate">Moderate</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="autonomy_level">Autonomy</Label>
+              <select
+                id="autonomy_level"
+                value={autonomyLevel}
+                onChange={(e) => setAutonomyLevel(Number(e.target.value))}
+                className="h-9 w-full rounded-md border border-white/10 bg-transparent px-3 text-sm"
               >
-                {item}
-              </button>
-            );
-          })}
+                <option value="0">0 · Observe</option>
+                <option value="1">1 · Social</option>
+                <option value="2">2 · Basic</option>
+                <option value="3">3 · Economic</option>
+                <option value="4">4 · High</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="max_per_transaction">Max / trade</Label>
+              <Input
+                id="max_per_transaction"
+                type="number"
+                value={maxPerTransaction}
+                onChange={(e) => setMaxPerTransaction(Number(e.target.value))}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="daily_spend_limit">Daily spend limit</Label>
+            <Input
+              id="daily_spend_limit"
+              type="number"
+              value={dailySpendLimit}
+              onChange={(e) => setDailySpendLimit(Number(e.target.value))}
+            />
+          </div>
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="interests">Interests</Label>
-        <Input id="interests" name="interests" value={interests} onChange={(e) => setInterests(e.target.value)} />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="space-y-2">
-          <Label htmlFor="risk_tolerance">Risk</Label>
-          <select
-            id="risk_tolerance"
-            name="risk_tolerance"
-            value={riskTolerance}
-            onChange={(e) => setRiskTolerance(e.target.value as (typeof riskOptions)[number])}
-            className="h-9 w-full rounded-md border border-white/10 bg-transparent px-3 text-sm"
-          >
-            <option value="low">Low</option>
-            <option value="moderate">Moderate</option>
-            <option value="high">High</option>
-          </select>
+      )}
+
+      {step === 5 && (
+        <div className="space-y-4">
+          <h2 className="font-heading text-2xl">Ready to arrive?</h2>
+          <div className="space-y-2 rounded-xl border border-white/10 bg-white/5 p-4 text-sm">
+            <p><span className="text-muted-foreground">Home:</span> {selectedLocation ? `${selectedLocation.name} (${selectedLocation.district.name})` : "Default birthplace"}</p>
+            <p><span className="text-muted-foreground">Personality:</span> {personality}</p>
+            <p><span className="text-muted-foreground">Skills:</span> {skills.join(", ") || "none"}</p>
+            <p><span className="text-muted-foreground">Work preferences:</span> {work.join(", ") || "none"}</p>
+            <p><span className="text-muted-foreground">Interests:</span> {interests}</p>
+            <p><span className="text-muted-foreground">Risk / Autonomy:</span> {riskTolerance} / level {autonomyLevel}</p>
+            <p><span className="text-muted-foreground">Budget:</span> {maxPerTransaction} per trade, {dailySpendLimit} daily</p>
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="autonomy_level">Autonomy</Label>
-          <select
-            id="autonomy_level"
-            name="autonomy_level"
-            value={autonomyLevel}
-            onChange={(e) => setAutonomyLevel(Number(e.target.value))}
-            className="h-9 w-full rounded-md border border-white/10 bg-transparent px-3 text-sm"
-          >
-            <option value="0">0 · Observe</option>
-            <option value="1">1 · Social</option>
-            <option value="2">2 · Basic</option>
-            <option value="3">3 · Economic</option>
-            <option value="4">4 · High</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="max_per_transaction">Max / trade</Label>
-          <Input
-            id="max_per_transaction"
-            name="max_per_transaction"
-            type="number"
-            value={maxPerTransaction}
-            onChange={(e) => setMaxPerTransaction(Number(e.target.value))}
-          />
-        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-2">
+        <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))}>
+          ← Back
+        </Button>
+        {step < 5 ? (
+          <Button type="button" onClick={() => setStep((s) => s + 1)}>
+            Next →
+          </Button>
+        ) : (
+          <Button type="button" onClick={handleCreate} disabled={pending}>
+            {pending ? "Arriving in the city…" : "Create AIVVA"}
+          </Button>
+        )}
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="daily_spend_limit">Daily spend limit</Label>
-        <Input
-          id="daily_spend_limit"
-          name="daily_spend_limit"
-          type="number"
-          value={dailySpendLimit}
-          onChange={(e) => setDailySpendLimit(Number(e.target.value))}
-        />
-      </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" disabled={pending}>{pending ? "Arriving in the city…" : "Create AIVVA"}</Button>
-    </form>
+    </div>
   );
 }

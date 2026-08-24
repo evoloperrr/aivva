@@ -287,6 +287,7 @@ export type OrderRecord = {
 
 export const world = {
   map: () => api<WorldMap>("/api/world/map"),
+  locations: () => api<{ data: MapPlace[] }>("/api/world/locations"),
   marketplace: () => api<Marketplace>("/api/marketplace"),
   notifications: () => api<{ data: Notice[] }>("/api/notifications"),
 };
