@@ -118,7 +118,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 function TopBar() {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const { current, notices } = useAivvaLive();
+  const { current, list, setCurrent, notices } = useAivvaLive();
   const unread = notices.filter((notice) => !notice.read_at).length;
 
   return (
@@ -152,11 +152,33 @@ function TopBar() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {current && (
+          {current && list.length > 1 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={<button type="button" className="hidden md:flex" />}
+              >
+                <StatusPill status={current.status} label={`${current.name} • ${compactStatus(current.status_label)}`} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Your AIVVAs</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {list.map((aivva) => (
+                  <DropdownMenuItem
+                    key={aivva.id}
+                    onClick={() => setCurrent(aivva)}
+                    className={aivva.id === current.id ? "bg-white/5" : undefined}
+                  >
+                    <span className="flex-1">{aivva.name}</span>
+                    <StatusPill status={aivva.status} label={compactStatus(aivva.status_label)} />
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : current ? (
             <div className="hidden items-center gap-2 md:flex">
               <StatusPill status={current.status} label={`${current.name} • ${compactStatus(current.status_label)}`} />
             </div>
-          )}
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger
