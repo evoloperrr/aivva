@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
-import type { GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent, Marker, StyleSpecification } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap, Marker, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Aivva, MapPlace, WorldMap } from "@/lib/api";
+import { paintAdventureCartography, poiGlyph } from "@/lib/adventureStyle";
 import { GENESIS_MAP, projectPoint, projectXY } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 
@@ -50,38 +51,20 @@ function districtCollection(map: WorldMap): GeoJSON.FeatureCollection {
       geometry: {
         type: "Polygon",
         coordinates: [
-          [...district.polygon.map(([x, y]) => {
-            const p = projectXY(x, y);
-            return [p.lng, p.lat];
-          }), (() => {
-            const first = district.polygon[0];
-            const p = projectXY(first[0], first[1]);
-            return [p.lng, p.lat];
-          })()],
+          [
+            ...district.polygon.map(([x, y]) => {
+              const p = projectXY(x, y);
+              return [p.lng, p.lat];
+            }),
+            (() => {
+              const first = district.polygon[0];
+              const p = projectXY(first[0], first[1]);
+              return [p.lng, p.lat];
+            })(),
+          ],
         ],
       },
     })),
-  };
-}
-
-function placeCollection(map: WorldMap): GeoJSON.FeatureCollection {
-  return {
-    type: "FeatureCollection",
-    features: map.districts.flatMap((district) =>
-      district.locations.map((place) => {
-        const p = projectXY(place.x, place.y);
-        return {
-          type: "Feature" as const,
-          properties: {
-            id: place.id,
-            name: place.name,
-            color: district.color,
-            type: place.type,
-          },
-          geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
-        };
-      }),
-    ),
   };
 }
 
@@ -111,56 +94,25 @@ function routeCollection(aivva: Aivva | null): GeoJSON.FeatureCollection {
   };
 }
 
-function ensureLayers(map: MapLibreMap) {
+function ensureOverlayLayers(map: MapLibreMap) {
   if (!map.getSource("districts")) {
     map.addSource("districts", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
     map.addLayer({
       id: "district-fill",
       type: "fill",
       source: "districts",
-      paint: { "fill-color": ["get", "color"], "fill-opacity": 0.16 },
+      paint: { "fill-color": ["get", "color"], "fill-opacity": 0.1 },
     });
     map.addLayer({
       id: "district-line",
       type: "line",
       source: "districts",
-      paint: { "line-color": ["get", "color"], "line-width": 1.6, "line-opacity": 0.85 },
-    });
-  }
-  if (!map.getSource("places")) {
-    map.addSource("places", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-    map.addLayer({
-      id: "place-pulse",
-      type: "circle",
-      source: "places",
       paint: {
-        "circle-radius": 11,
-        "circle-color": ["get", "color"],
-        "circle-opacity": 0.18,
+        "line-color": "#d4b56a",
+        "line-width": 1.4,
+        "line-dasharray": [3, 2],
+        "line-opacity": 0.75,
       },
-    });
-    map.addLayer({
-      id: "place-dot",
-      type: "circle",
-      source: "places",
-      paint: {
-        "circle-radius": 5,
-        "circle-color": ["get", "color"],
-        "circle-stroke-width": 1.5,
-        "circle-stroke-color": "#eef4ff",
-      },
-    });
-    map.addLayer({
-      id: "place-label",
-      type: "symbol",
-      source: "places",
-      layout: {
-        "text-field": ["get", "name"],
-        "text-size": 11,
-        "text-offset": [0, 1.15],
-        "text-anchor": "top",
-      },
-      paint: { "text-color": "#eef4ff", "text-halo-color": "#05070f", "text-halo-width": 1.2 },
     });
   }
   if (!map.getSource("route")) {
@@ -170,10 +122,10 @@ function ensureLayers(map: MapLibreMap) {
       type: "line",
       source: "route",
       paint: {
-        "line-color": "#22e3d0",
-        "line-width": 3,
-        "line-dasharray": [1.4, 1.2],
-        "line-opacity": 0.9,
+        "line-color": "#e8c36a",
+        "line-width": 3.2,
+        "line-dasharray": [1.2, 1.1],
+        "line-opacity": 0.95,
       },
     });
   }
@@ -182,6 +134,13 @@ function ensureLayers(map: MapLibreMap) {
 function setSource(map: MapLibreMap, id: string, data: GeoJSON.FeatureCollection) {
   const source = map.getSource(id) as GeoJSONSource | undefined;
   source?.setData(data);
+}
+
+function districtCenter(district: WorldMap["districts"][number]) {
+  if (district.polygon.length === 0) return null;
+  const x = district.polygon.reduce((sum, point) => sum + point[0], 0) / district.polygon.length;
+  const y = district.polygon.reduce((sum, point) => sum + point[1], 0) / district.polygon.length;
+  return projectXY(x, y);
 }
 
 export function LivingMap({
@@ -193,10 +152,13 @@ export function LivingMap({
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Map<string, Marker>>(new Map());
+  const actorMarkersRef = useRef<Map<string, Marker>>(new Map());
+  const placeMarkersRef = useRef<Map<string, Marker>>(new Map());
+  const regionMarkersRef = useRef<Map<string, Marker>>(new Map());
   const userMovedRef = useRef(false);
   const fallbackTilesRef = useRef(false);
   const [ready, setReady] = useState(false);
+  const [rasterFallback, setRasterFallback] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
 
   const selectedPlace = selection?.kind === "place" ? selection.place : selection?.place ?? null;
@@ -210,11 +172,14 @@ export function LivingMap({
       container: host,
       style: GENESIS_MAP.styleUrl,
       center: [GENESIS_MAP.center.lng, GENESIS_MAP.center.lat],
-      zoom: 15.2,
+      zoom: 15.15,
+      pitch: 38,
+      bearing: -18,
       attributionControl: { compact: true },
     });
-    const pins = markersRef.current;
-    instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    const actorPins = actorMarkersRef.current;
+    const placePins = placeMarkersRef.current;
+    const regionPins = regionMarkersRef.current;
     mapRef.current = instance;
 
     const onMove = () => {
@@ -226,7 +191,8 @@ export function LivingMap({
     });
 
     const boot = () => {
-      ensureLayers(instance);
+      paintAdventureCartography(instance);
+      ensureOverlayLayers(instance);
       setReady(true);
     };
     instance.on("load", boot);
@@ -234,43 +200,88 @@ export function LivingMap({
     instance.on("error", () => {
       if (fallbackTilesRef.current) return;
       fallbackTilesRef.current = true;
+      setRasterFallback(true);
       instance.setStyle(RASTER_STYLE);
     });
 
     return () => {
       instance.remove();
       mapRef.current = null;
-      pins.forEach((marker) => marker.remove());
-      pins.clear();
+      actorPins.forEach((marker) => marker.remove());
+      placePins.forEach((marker) => marker.remove());
+      regionPins.forEach((marker) => marker.remove());
+      actorPins.clear();
+      placePins.clear();
+      regionPins.clear();
     };
   }, []);
 
   useEffect(() => {
     const instance = mapRef.current;
     if (!instance || !ready || !map) return;
-    ensureLayers(instance);
+    ensureOverlayLayers(instance);
     setSource(instance, "districts", districtCollection(map));
-    setSource(instance, "places", placeCollection(map));
     setSource(instance, "route", routeCollection(aivva));
-
-    const onPlaceClick = (event: MapLayerMouseEvent) => {
-      const feature = event.features?.[0];
-      const id = feature?.properties?.id as number | undefined;
-      if (id == null) return;
-      const place = map.districts.flatMap((district) => district.locations).find((row) => row.id === id);
-      if (place) setSelection({ kind: "place", place });
-    };
-    instance.on("click", "place-dot", onPlaceClick);
-    instance.on("mouseenter", "place-dot", () => {
-      instance.getCanvas().style.cursor = "pointer";
-    });
-    instance.on("mouseleave", "place-dot", () => {
-      instance.getCanvas().style.cursor = "";
-    });
-    return () => {
-      instance.off("click", "place-dot", onPlaceClick);
-    };
   }, [map, aivva, ready]);
+
+  useEffect(() => {
+    const instance = mapRef.current;
+    if (!instance || !ready || !map) return;
+
+    const wanted = new Map<string, MapPlace>();
+    for (const district of map.districts) {
+      for (const place of district.locations) {
+        wanted.set(String(place.id), place);
+      }
+    }
+    for (const [id, marker] of placeMarkersRef.current) {
+      if (!wanted.has(id)) {
+        marker.remove();
+        placeMarkersRef.current.delete(id);
+      }
+    }
+    wanted.forEach((place, id) => {
+      const pos = projectPoint(place);
+      if (!pos) return;
+      let marker = placeMarkersRef.current.get(id);
+      const glyph = poiGlyph(place.type);
+      if (!marker) {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.className = `atlas-poi atlas-poi-${glyph.kind}`;
+        el.innerHTML = `<span class="atlas-poi-flag">${glyph.mark}</span><span class="atlas-poi-name">${place.name}</span>`;
+        el.addEventListener("click", (event) => {
+          event.stopPropagation();
+          setSelection({ kind: "place", place });
+        });
+        marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([pos.lng, pos.lat]).addTo(instance);
+        placeMarkersRef.current.set(id, marker);
+      } else {
+        marker.setLngLat([pos.lng, pos.lat]);
+      }
+    });
+
+    for (const [id, marker] of regionMarkersRef.current) {
+      if (!map.districts.some((district) => String(district.id) === id)) {
+        marker.remove();
+        regionMarkersRef.current.delete(id);
+      }
+    }
+    for (const district of map.districts) {
+      const center = districtCenter(district);
+      if (!center) continue;
+      const id = String(district.id);
+      let marker = regionMarkersRef.current.get(id);
+      if (!marker) {
+        const el = document.createElement("div");
+        el.className = "atlas-region";
+        el.textContent = district.name;
+        el.style.color = district.color;
+        marker = new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([center.lng, center.lat]).addTo(instance);
+        regionMarkersRef.current.set(id, marker);
+      }
+    }
+  }, [map, ready]);
 
   useEffect(() => {
     const instance = mapRef.current;
@@ -299,20 +310,22 @@ export function LivingMap({
       });
     }
 
-    for (const [id, marker] of markersRef.current) {
+    for (const [id, marker] of actorMarkersRef.current) {
       if (!wanted.has(id)) {
         marker.remove();
-        markersRef.current.delete(id);
+        actorMarkersRef.current.delete(id);
       }
     }
 
     wanted.forEach((entry, id) => {
-      let marker = markersRef.current.get(id);
+      let marker = actorMarkersRef.current.get(id);
       if (!marker) {
         const el = document.createElement("button");
         el.type = "button";
-        el.className = cn("aivva-map-pin", entry.mine && "aivva-map-pin-live");
-        el.innerHTML = `<span class="aivva-map-pin-dot"></span><span class="aivva-map-pin-name">${entry.label}</span>`;
+        el.className = cn("atlas-actor", entry.mine && "atlas-actor-party");
+        el.innerHTML = entry.mine
+          ? `<span class="atlas-actor-rune">△</span><span class="atlas-actor-name">${entry.label}</span>`
+          : `<span class="atlas-actor-dot"></span><span class="atlas-actor-name">${entry.label}</span>`;
         el.addEventListener("click", (event) => {
           event.stopPropagation();
           setSelection({
@@ -323,10 +336,10 @@ export function LivingMap({
           });
         });
         marker = new maplibregl.Marker({ element: el, anchor: "bottom" }).setLngLat([entry.lng, entry.lat]).addTo(instance);
-        markersRef.current.set(id, marker);
+        actorMarkersRef.current.set(id, marker);
       } else {
         marker.setLngLat([entry.lng, entry.lat]);
-        const name = marker.getElement().querySelector(".aivva-map-pin-name");
+        const name = marker.getElement().querySelector(".atlas-actor-name");
         if (name) name.textContent = entry.label;
       }
     });
@@ -334,66 +347,85 @@ export function LivingMap({
     if (livePos && aivva?.movement.traveling && !userMovedRef.current) {
       instance.easeTo({
         center: [livePos.lng, livePos.lat],
-        duration: reducedMotion() ? 0 : 700,
+        duration: reducedMotion() ? 0 : 800,
+        pitch: 42,
       });
     }
   }, [aivva, livePos, map, ready]);
 
   if (!map) {
     return (
-      <div className="map-grid flex h-[520px] items-center justify-center rounded-3xl border border-white/10 text-sm text-muted-foreground">
-        Loading live streets…
+      <div className="atlas-frame flex h-[520px] items-center justify-center text-sm text-[#e6d7a8]/70">
+        Unrolling the atlas…
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#070b16] shadow-[0_20px_80px_rgba(0,0,0,0.45)]">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-        <span>{map.city?.name ?? "Genesis City"} · live OSM</span>
-        <span className="text-teal">{GENESIS_MAP.placeLabel}</span>
+    <div className="atlas-frame">
+      <div className="flex items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="font-heading text-lg tracking-[0.18em] text-[#e6d7a8]">World Atlas</p>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-[#e6d7a8]/55">
+            {map.city?.name ?? "Genesis City"} · real streets · {GENESIS_MAP.placeLabel}
+          </p>
+        </div>
+        <p className="mark text-xs text-[#22e3d0]">△I▽▽△</p>
       </div>
-      <div className="relative">
-        <div ref={hostRef} className="aivva-map h-[min(68vh,640px)] w-full" />
+      <div className={cn("atlas-stage relative", rasterFallback && "atlas-stage-raster")}>
+        <div ref={hostRef} className="aivva-map h-[min(70vh,680px)] w-full" />
+        <div className="atlas-vignette" />
+        <div className="atlas-compass" aria-hidden>
+          <span>N</span>
+        </div>
+        <div className="atlas-legend">
+          <p>Hearth ⌂</p>
+          <p>Guild ✦</p>
+          <p>Bazaar ◆</p>
+          <p>Grove ※</p>
+          <p>Party △</p>
+        </div>
         {!ready && (
-          <div className="absolute inset-0 grid place-items-center bg-[#070b16]/70 text-sm text-muted-foreground">
-            Connecting to live map tiles…
+          <div className="absolute inset-0 grid place-items-center bg-[#10180f]/70 text-sm text-[#e6d7a8]/70">
+            Charting live terrain…
           </div>
         )}
       </div>
-      <div className="border-t border-white/10 px-4 py-3 text-sm text-muted-foreground">
+      <div className="border-t border-[#d4b56a]/25 px-4 py-3 text-sm text-[#e6d7a8]/75">
         {selection?.kind === "aivva" ? (
           <div>
-            <p className="font-medium text-foreground">
+            <p className="font-medium text-[#f4ead0]">
               {selection.name} · {selection.activity}
             </p>
             <p>
               {selection.place
-                ? `${selection.place.name}${selection.place.district?.name ? ` in ${selection.place.district.name}` : ""}`
+                ? `${selection.place.name}${selection.place.district?.name ? ` · ${selection.place.district.name}` : ""}`
                 : "Location is not published."}
             </p>
             {selection.place?.description && <p className="mt-1">{selection.place.description}</p>}
           </div>
         ) : selectedPlace ? (
           <div>
-            <p className="font-medium text-foreground">{selectedPlace.name}</p>
+            <p className="font-medium text-[#f4ead0]">
+              {poiGlyph(selectedPlace.type).kind} · {selectedPlace.name}
+            </p>
             <p>{selectedPlace.description}</p>
             {selectedPlace.services.length > 0 && (
-              <p className="mt-1 text-xs uppercase tracking-wider text-teal">
+              <p className="mt-1 text-xs uppercase tracking-wider text-[#d4b56a]">
                 {selectedPlace.services.join(" · ")}
               </p>
             )}
           </div>
         ) : aivva?.location ? (
           <p>
-            {aivva.name} is {aivva.movement.traveling ? "moving on live streets toward" : "on the live map at"}{" "}
-            <span className="text-foreground">
+            {aivva.name} {aivva.movement.traveling ? "follows the trail toward" : "is camped at"}{" "}
+            <span className="text-[#f4ead0]">
               {aivva.movement.traveling ? aivva.movement.to?.name : aivva.location.name}
             </span>
             {aivva.location.district?.name ? ` in ${aivva.location.district.name}` : ""}.
           </p>
         ) : (
-          <p>Click a place or an AIVVA. Positions update from the live backend snapshot.</p>
+          <p>Choose a pennant or your party. Terrain is live OpenStreetMap; the markers are Genesis places.</p>
         )}
       </div>
     </div>

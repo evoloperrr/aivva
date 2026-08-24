@@ -11,9 +11,9 @@ export default function WorldPage() {
       {({ current, map }) => (
         <div className="space-y-5">
           <PageHeader
-            kicker="Living map"
+            kicker="World atlas"
             title="Genesis City"
-            description="Real OpenStreetMap streets, live. Genesis districts and AIVVA positions from the backend are projected onto BGC, Taguig. The camera follows your AIVVA while it travels."
+            description="An adventure cartography of real OpenStreetMap streets in BGC, Taguig. Genesis hearths, guilds, and bazaars sit on live terrain. Your AIVVA is the party marker."
           />
           <LivingMap map={map} aivva={current} />
           <div className="grid gap-3 md:grid-cols-3">
