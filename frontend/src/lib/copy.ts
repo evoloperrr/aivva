@@ -1,3 +1,6 @@
+export const BRAND_SLOGAN = "YOUR AI LIFE. YOUR WORLD. YOUR FUTURE.";
+export const BRAND_FOOTER = "AIVVA — BUILDING THE FIRST AI CIVILIZATION.";
+
 export const LOCAL_TEST_ECONOMY_BANNER =
   "LOCAL TEST ECONOMY — AIVVA Credits are internal units. They are not money and cannot be withdrawn.";
 

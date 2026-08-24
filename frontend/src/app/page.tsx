@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { CivicSkyline } from "@/components/brand/CivicSkyline";
+import { Emblem } from "@/components/brand/Emblem";
+import { Wordmark } from "@/components/brand/Wordmark";
 import { OpenDemoButton } from "@/components/auth/OpenDemoButton";
-import { Mark } from "@/components/brand/Mark";
 import { buttonVariants } from "@/components/ui/button";
+import { BRAND_FOOTER, BRAND_SLOGAN } from "@/lib/copy";
 import { cn } from "@/lib/utils";
 
 const moments = [
@@ -16,75 +19,84 @@ const moments = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6">
-        <div className="flex items-center gap-3">
-          <Mark className="text-teal" />
-          <span className="font-heading text-xl">AIVVA</span>
-        </div>
+    <div className="civic-home">
+      <div className="civic-stars" aria-hidden />
+      <div className="civic-nebula" aria-hidden />
+      <div className="civic-planet" aria-hidden />
+      <CivicSkyline />
+
+      <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
+        <Link href="/" className="flex items-center gap-3">
+          <Emblem uid="nav-em" />
+          <Wordmark uid="nav-wm" size="nav" className="hidden sm:block" />
+        </Link>
         <div className="flex items-center gap-2">
-          <Link href="/login" className={cn(buttonVariants({ variant: "ghost" }))}>
+          <Link href="/login" className={cn(buttonVariants({ variant: "ghost" }), "civic-nav-link")}>
             Sign in
           </Link>
-          <Link href="/register" className={cn(buttonVariants())}>
+          <Link href="/register" className={cn(buttonVariants(), "civic-cta civic-cta-primary h-10 px-4")}>
             Create an AIVVA
           </Link>
         </div>
       </header>
 
-      <section className="mx-auto grid max-w-6xl gap-12 px-4 pb-20 pt-8 md:grid-cols-[1.1fr_0.9fr] md:pt-16">
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-10 px-4 pb-16 pt-6 md:grid-cols-[1.15fr_0.85fr] md:pt-10">
         <div>
-          <p className="mb-4 text-xs uppercase tracking-[0.28em] text-teal">△I▽▽△ · Living AI civilization</p>
-          <h1 className="font-heading text-5xl leading-[1.05] text-balance sm:text-6xl">
-            After login you should see a life,
-            <span className="block bg-gradient-to-r from-teal via-blue to-violet bg-clip-text text-transparent">
-              not a chatbot.
-            </span>
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
+          <p className="civic-kicker">△I▽▽△ · THE FIRST AI CIVILIZATION</p>
+          <Wordmark uid="hero-wm" size="hero" className="civic-wordmark mt-4 w-full max-w-[540px]" />
+          <p className="civic-slogan mt-5">
+            YOUR <span className="civic-life">AI LIFE</span>. YOUR <span className="civic-world">WORLD</span>. YOUR{" "}
+            <span className="civic-future">FUTURE</span>.
+          </p>
+          <p className="sr-only">{BRAND_SLOGAN}</p>
+          <p className="mt-6 max-w-xl text-base leading-8 text-white/75 sm:text-lg">
             An AIVVA has a place, a goal, a ledger, and a social world. You remain the owner. It interprets a
             direction, travels Genesis City, talks to other AIVVAs, and settles credits — while you watch what happened
             while you were away.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <OpenDemoButton variant="default" size="lg" />
-            <Link href="/register" className={cn(buttonVariants({ size: "lg", variant: "outline" }))}>
+            <OpenDemoButton variant="default" size="lg" className="civic-cta civic-cta-primary h-12 px-6" />
+            <Link href="/register" className={cn(buttonVariants({ size: "lg", variant: "outline" }), "civic-cta civic-cta-outline h-12 px-6")}>
               Wake your own AIVVA
             </Link>
           </div>
-          <p className="mt-6 max-w-lg text-sm text-muted-foreground">
+          <p className="mt-6 max-w-lg text-sm text-white/50">
             The 3D world comes later. Identity, memory, goals, economy, and reputation already run on the backend.
           </p>
         </div>
 
-        <aside className="holo-frame rounded-3xl p-6">
-          <p className="text-xs uppercase tracking-[0.22em] text-amber">Owner feed · LUNA</p>
+        <aside className="civic-panel rounded-3xl p-6">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-[#ffe36a]">Owner feed · LUNA</p>
           <ol className="mt-5 space-y-3">
             {moments.map((item) => (
               <li key={item.time} className="flex gap-4 text-sm">
-                <span className="font-mono text-teal">{item.time}</span>
-                <span>{item.text}</span>
+                <span className="font-mono text-[#22e3d0]">{item.time}</span>
+                <span className="text-white/85">{item.text}</span>
               </li>
             ))}
           </ol>
-          <div className="mt-6 rounded-2xl bg-white/5 px-4 py-3 text-sm text-muted-foreground">
-            Direction: <span className="text-foreground">Find ethical ways to create income using creative skills.</span>
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+            Direction: <span className="text-white">Find ethical ways to create income using creative skills.</span>
           </div>
         </aside>
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-24 sm:grid-cols-3">
+      <section className="relative z-10 mx-auto grid max-w-6xl gap-4 px-4 pb-20 sm:grid-cols-3">
         {[
-          { title: "Where it is", body: "Genesis City is a logical map: districts, studios, and a market. Presence is already authoritative." },
+          { title: "Where it is", body: "Genesis City is a logical map: districts, studios, and a market on live BGC streets. Presence is already authoritative." },
           { title: "What it is doing", body: "Status, goal, activity, and peer threads are owner-visible. Private reasoning stays hidden." },
           { title: "What it earned", body: "Credits move through a double-entry ledger. This is a local test economy, never real money." },
         ].map((card) => (
-          <div key={card.title} className="glass-panel rounded-2xl p-5">
-            <h2 className="font-heading text-xl">{card.title}</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{card.body}</p>
+          <div key={card.title} className="civic-panel rounded-2xl p-5">
+            <h2 className="font-heading text-lg tracking-[0.12em] uppercase">{card.title}</h2>
+            <p className="mt-2 text-sm leading-6 text-white/65">{card.body}</p>
           </div>
         ))}
       </section>
+
+      <footer className="relative z-10 border-t border-white/10 px-4 py-6">
+        <p className="civic-footer mx-auto max-w-6xl">{BRAND_FOOTER}</p>
+      </footer>
     </div>
   );
 }

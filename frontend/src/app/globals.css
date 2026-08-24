@@ -106,13 +106,15 @@
     background-attachment: fixed;
   }
   h1, h2, h3, .font-heading {
-    font-family: var(--font-heading), ui-serif, Georgia, serif;
+    font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.06em;
   }
 }
 
 .mark {
-  letter-spacing: 0.18em;
-  font-weight: 500;
+  letter-spacing: 0.22em;
+  font-weight: 600;
+  font-family: var(--font-heading), sans-serif;
 }
 
 .glass-panel {
@@ -198,7 +200,7 @@
 }
 .atlas-region {
   pointer-events: none;
-  font-family: var(--font-heading), Georgia, serif;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 13px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -376,4 +378,198 @@
 
 @keyframes path-flow {
   to { stroke-dashoffset: -72; }
+}
+
+.civic-home {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  color: #eef4ff;
+  background: #03050c;
+  overflow: hidden;
+}
+
+.civic-stars,
+.civic-nebula,
+.civic-planet,
+.civic-skyline {
+  pointer-events: none;
+}
+
+.civic-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 8% 12%, #fff, transparent),
+    radial-gradient(1px 1px at 22% 28%, #c9e4ff, transparent),
+    radial-gradient(1.4px 1.4px at 36% 8%, #fff, transparent),
+    radial-gradient(1px 1px at 48% 22%, #ffe6ff, transparent),
+    radial-gradient(1px 1px at 61% 14%, #fff, transparent),
+    radial-gradient(1.6px 1.6px at 74% 30%, #d6fff6, transparent),
+    radial-gradient(1px 1px at 88% 10%, #fff, transparent),
+    radial-gradient(1px 1px at 14% 48%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 29% 62%, #c9e4ff, transparent),
+    radial-gradient(1px 1px at 53% 44%, #fff, transparent),
+    radial-gradient(1px 1px at 67% 58%, #ffe6ff, transparent),
+    radial-gradient(1.5px 1.5px at 81% 46%, #fff, transparent),
+    radial-gradient(1px 1px at 93% 64%, #d6fff6, transparent),
+    radial-gradient(1px 1px at 18% 78%, #fff, transparent),
+    radial-gradient(1px 1px at 41% 84%, #c9e4ff, transparent),
+    radial-gradient(1.3px 1.3px at 72% 80%, #fff, transparent);
+  opacity: 0.7;
+}
+
+.civic-nebula {
+  position: absolute;
+  inset: -10%;
+  background:
+    radial-gradient(540px 280px at 12% 18%, rgba(77, 143, 255, 0.28), transparent 62%),
+    radial-gradient(480px 260px at 88% 12%, rgba(232, 93, 255, 0.22), transparent 60%),
+    radial-gradient(520px 240px at 72% 38%, rgba(255, 77, 207, 0.1), transparent 58%),
+    radial-gradient(420px 220px at 30% 70%, rgba(34, 227, 208, 0.12), transparent 55%),
+    radial-gradient(380px 200px at 60% 82%, rgba(255, 138, 61, 0.1), transparent 50%);
+}
+
+.civic-planet {
+  position: absolute;
+  right: -8%;
+  top: 8%;
+  width: min(42vw, 420px);
+  height: min(42vw, 420px);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 35% 32%, rgba(255, 255, 255, 0.18), transparent 18%),
+    radial-gradient(circle at 50% 50%, #1b3f8a 0%, #0b1638 46%, #05070f 72%);
+  box-shadow:
+    0 0 80px rgba(77, 143, 255, 0.28),
+    inset -30px -20px 60px rgba(0, 0, 0, 0.45);
+  opacity: 0.55;
+}
+
+.civic-skyline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: min(32vh, 280px);
+  opacity: 0.88;
+}
+
+.civic-kicker {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: #22e3d0;
+  text-shadow: 0 0 18px rgba(34, 227, 208, 0.45);
+}
+
+.civic-wordmark {
+  filter: drop-shadow(0 0 18px rgba(77, 143, 255, 0.35));
+}
+
+.civic-slogan {
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(0.78rem, 2vw, 1.05rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f4f7ff;
+}
+
+.civic-life {
+  color: #4d8fff;
+  text-shadow: 0 0 16px rgba(77, 143, 255, 0.55);
+}
+
+.civic-world {
+  color: #e85dff;
+  text-shadow: 0 0 16px rgba(232, 93, 255, 0.5);
+}
+
+.civic-future {
+  color: #b8ff4a;
+  text-shadow: 0 0 16px rgba(184, 255, 74, 0.4);
+}
+
+.civic-panel {
+  background:
+    linear-gradient(180deg, rgba(16, 22, 48, 0.72), rgba(6, 9, 20, 0.78));
+  border: 1px solid rgba(238, 244, 255, 0.1);
+  box-shadow:
+    0 0 0 1px rgba(34, 227, 208, 0.08),
+    0 0 40px rgba(139, 124, 255, 0.12),
+    inset 0 0 40px rgba(77, 143, 255, 0.05);
+  backdrop-filter: blur(16px);
+}
+
+.civic-nav-link {
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #d7e2ff;
+}
+
+.civic-cta {
+  font-family: var(--font-heading), sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 11px;
+  border-radius: 0.7rem;
+}
+
+.civic-cta-primary {
+  background: linear-gradient(90deg, #22e3d0, #4d8fff) !important;
+  color: #041018 !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 24px rgba(34, 227, 208, 0.35);
+}
+
+.civic-cta-primary:hover {
+  filter: brightness(1.08);
+}
+
+.civic-cta-outline {
+  background:
+    linear-gradient(#070b16, #070b16) padding-box,
+    linear-gradient(90deg, #e85dff, #22e3d0) border-box !important;
+  border: 1px solid transparent !important;
+  color: #eef4ff !important;
+}
+
+.civic-footer {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(238, 244, 255, 0.55);
+  text-align: center;
+}
+
+.civic-footer::before,
+.civic-footer::after {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin: 0 12px -4px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 227, 208, 0.45);
+  box-shadow: 0 0 10px rgba(34, 227, 208, 0.25);
+}
+
+@media (max-width: 640px) {
+  .civic-planet {
+    opacity: 0.32;
+    top: 4%;
+  }
+  .civic-slogan {
+    letter-spacing: 0.12em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civic-cta-primary {
+    box-shadow: none;
+  }
 }
