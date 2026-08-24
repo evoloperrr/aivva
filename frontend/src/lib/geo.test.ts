@@ -64,7 +64,7 @@ describe("atlas label collision", () => {
       [
         { id: "actor-1", kind: "actor", priority: 1, x: 100, y: 100, w: 50, h: 14 },
         { id: "region-1", kind: "region", priority: 30, x: 105, y: 102, w: 120, h: 16 },
-        { id: "place-1", kind: "place", priority: 12, x: 108, y: 118, w: 90, h: 14 },
+        { id: "place-1", kind: "place", priority: 12, x: 108, y: 140, w: 90, h: 14 },
       ],
       15.6,
     );
