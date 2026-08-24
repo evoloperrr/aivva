@@ -78,8 +78,14 @@ return [
             'classify' => ['provider' => 'heuristic', 'model' => 'rules-v1'],
             'simple' => ['provider' => 'heuristic', 'model' => 'rules-v1'],
             'plan' => ['provider' => 'heuristic', 'model' => 'planner-v1'],
-            'create' => ['provider' => 'heuristic', 'model' => 'creator-v1'],
-            'verify' => ['provider' => 'heuristic', 'model' => 'verifier-v1'],
+            'create' => [
+                'provider' => env('AIVVA_CREATE_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_CREATE_MODEL', 'creator-v1'),
+            ],
+            'verify' => [
+                'provider' => env('AIVVA_GENERAL_VERIFY_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_GENERAL_VERIFY_MODEL', 'verifier-v1'),
+            ],
             'peer_turn' => [
                 'provider' => env('AIVVA_PEER_PROVIDER', 'heuristic'),
                 'model' => env('AIVVA_PEER_MODEL', 'social-v1'),

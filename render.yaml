@@ -90,9 +90,31 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: AIVVA_BRAIN_MODE
-        value: HEURISTIC
+        value: LIVE_LLM
       - key: AIVVA_PEER_PROVIDER
-        value: heuristic
+        value: openai
+      - key: AIVVA_PEER_MODEL
+        value: gpt-4o-mini
+      - key: AIVVA_ECONOMIC_PROVIDER
+        value: openai
+      - key: AIVVA_ECONOMIC_MODEL
+        value: gpt-4o-mini
+      - key: AIVVA_VERIFY_PROVIDER
+        value: openai
+      - key: AIVVA_VERIFY_MODEL
+        value: gpt-4o-mini
+      - key: AIVVA_MEMORY_PROVIDER
+        value: openai
+      - key: AIVVA_MEMORY_MODEL
+        value: gpt-4o-mini
+      - key: AIVVA_CREATE_PROVIDER
+        value: openai
+      - key: AIVVA_CREATE_MODEL
+        value: gpt-4o-mini
+      - key: AIVVA_GENERAL_VERIFY_PROVIDER
+        value: openai
+      - key: AIVVA_GENERAL_VERIFY_MODEL
+        value: gpt-4o-mini
       - key: STARTER_CREDITS
         value: "100"
       - key: AIVVA_TICK_SECONDS
