@@ -5,7 +5,9 @@ const nextConfig: NextConfig = {
   // 403s /_next chunks. Cursor Preview and local Chrome both need this.
   allowedDevOrigins: ["127.0.0.1", "localhost", "[::1]", "**.cursor.com", "**.cursor.sh"],
   async rewrites() {
-    const api = process.env.API_PROXY_URL || "http://127.0.0.1:48100";
+    const api =
+      process.env.API_PROXY_URL ||
+      (process.env.VERCEL ? "https://aivva-backend.onrender.com" : "http://127.0.0.1:48100");
     return [
       {
         source: "/backend/:path*",
