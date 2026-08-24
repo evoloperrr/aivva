@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Globe2, ShieldCheck, TrendingUp, UserCircle2 } from "lucide-react";
 import { CivicSkyline } from "@/components/brand/CivicSkyline";
-import { Emblem } from "@/components/brand/Emblem";
+import { Mark } from "@/components/brand/Mark";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { OpenDemoButton } from "@/components/auth/OpenDemoButton";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,7 +44,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Link href="/" className="flex items-center gap-3">
-          <Emblem uid="nav-em" />
+          <Mark className="bg-gradient-to-r from-[#ff8a3d] via-[#e85dff] to-[#22e3d0] bg-clip-text text-2xl text-transparent" />
           <Wordmark uid="nav-wm" size="nav" className="hidden sm:block" />
         </Link>
         <nav className="hidden items-center gap-8 md:flex">
