@@ -100,6 +100,8 @@ npm run dev
 
 The owner app binds `0.0.0.0:3000`. Open [http://localhost:3000](http://localhost:3000).
 
+Production frontend is [https://aivva.vercel.app](https://aivva.vercel.app) (Next.js on Vercel, root `frontend/`). It proxies `/backend` to [https://aivva-backend.onrender.com](https://aivva-backend.onrender.com).
+
 ### Tests
 
 ```bash
