@@ -4,6 +4,7 @@ namespace App\Domain\Goals;
 
 use App\Ai\AiOrchestrator;
 use App\Domain\Ethics\EthicsEngine;
+use App\Domain\World\LocationResolver;
 use App\Enums\GoalStatus;
 use App\Models\Aivva;
 use App\Models\AivvaGoal;
@@ -13,6 +14,7 @@ class GoalInterpreter
     public function __construct(
         private readonly EthicsEngine $ethics,
         private readonly AiOrchestrator $ai,
+        private readonly LocationResolver $locations,
     ) {}
 
     /**
@@ -82,6 +84,14 @@ class GoalInterpreter
             'owner_direction' => $direction,
         ];
 
+        if ($type === 'Social' && preg_match('/\bmeet\b/i', $direction) === 1) {
+            $meetup = $this->meetupFromDirection($aivva, $direction);
+            if ($meetup) {
+                $type = 'Meetup';
+                $structured = $meetup;
+            }
+        }
+
         $this->ai->reason('plan', "Interpret direction: {$direction}", $aivva, [
             'task' => 'goal',
             'structured' => $structured,
@@ -96,7 +106,7 @@ class GoalInterpreter
         ]);
 
         $permissions = ['Observe'];
-        if (in_array($type, ['Social', 'Exploration', 'Learning'], true)) {
+        if (in_array($type, ['Social', 'Meetup', 'Exploration', 'Learning'], true)) {
             $permissions[] = 'Social (Level 1)';
         }
         if (in_array($type, ['Income Generation', 'Business', 'Contribution'], true)) {
@@ -113,6 +123,38 @@ class GoalInterpreter
                 'estimated_cost' => $type === 'Income Generation' ? 0 : 5,
                 'permissions_needed' => $permissions,
             ],
+        ];
+    }
+
+    /**
+     * A direction like "go to 8th street and meet another aivva" names a real
+     * place. Resolve it and, if a specific AIVVA was named, resolve that too —
+     * otherwise leave the target open so a real nearby AIVVA is found at
+     * execution time (see ActionExecutor::resolveTarget).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function meetupFromDirection(Aivva $aivva, string $direction): ?array
+    {
+        $location = $this->locations->resolveFromText($direction);
+        if (! $location) {
+            return null;
+        }
+
+        $target = null;
+        if (preg_match('/\bmeet(?:\s+with)?\s+(?!(?:another|other|an|a|someone|anyone)\b)([a-z][\w\'-]{1,30})/i', $direction, $match) === 1) {
+            $target = Aivva::query()
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($match[1]))])
+                ->where('id', '!=', $aivva->id)
+                ->first();
+        }
+
+        return [
+            'goal_type' => 'Meetup',
+            'location_id' => $location->id,
+            'target_aivva_id' => $target?->id,
+            'meeting_name' => $location->name,
+            'owner_direction' => $direction,
         ];
     }
 }

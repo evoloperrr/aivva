@@ -170,6 +170,7 @@ class ActionExecutor
         $requests = MarketplaceRequest::query()->where('status', 'OPEN')->with('buyer')->get();
         $match = $requests->first(function ($request) use ($skills) {
             $haystack = mb_strtolower($request->title.' '.$request->category.' '.$request->description);
+
             return $skills->contains(fn ($skill) => str_contains($haystack, $skill) || str_contains($skill, 'music') && str_contains($haystack, 'music'));
         }) ?? $requests->first();
 
@@ -543,6 +544,31 @@ class ActionExecutor
         if (! empty($payload['target_aivva_id'])) {
             return Aivva::query()->find($payload['target_aivva_id']);
         }
+
+        // "Meet another AIVVA" with no name given should find a real AIVVA to
+        // talk to, not the platform NPC — prefer whoever is already at the
+        // meeting spot, then any other real AIVVA in the city.
+        if (! empty($payload['peer'])) {
+            $other = Aivva::query()
+                ->where('id', '!=', $aivva->id)
+                ->where('is_platform', false)
+                ->when(
+                    ! empty($payload['location_id']),
+                    fn ($query) => $query->where('current_location_id', $payload['location_id']),
+                )
+                ->inRandomOrder()
+                ->first();
+
+            if ($other) {
+                return $other;
+            }
+
+            $anyOther = Aivva::query()->where('id', '!=', $aivva->id)->where('is_platform', false)->inRandomOrder()->first();
+            if ($anyOther) {
+                return $anyOther;
+            }
+        }
+
         $opportunity = $this->openOpportunity($aivva);
         if ($opportunity) {
             return $opportunity->buyer;

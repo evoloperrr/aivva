@@ -157,7 +157,7 @@ class OwnerChatService
             ])),
             'direction' => $goal
                 ? "I heard that. I already have an active direction: \"{$goal}\". Confirm a new one in Command if you want me to switch. I will not change goals from chat alone."
-                : "I can take that as a direction, but you still need to Interpret and Confirm it in Command. Chat is not a spending or planning override.",
+                : 'I can take that as a direction, but you still need to Interpret and Confirm it in Command. Chat is not a spending or planning override.',
             'pause' => 'I can wait. Use Pause on the command panel if you want the city loop to stop. Chat cannot freeze the ledger by itself.',
             'encouragement' => "Thank you. I'm still at {$where}, {$status}. I'll keep working inside your permissions.",
             default => $this->smalltalk($name, $where, $status, $voice, $message),
