@@ -99,6 +99,22 @@ class AgentRuntime
             return ['ok' => true, 'idle' => true, 'aivva_id' => $aivva->id];
         }
 
+        // A plan that finished every step (status COMPLETED) means the goal is
+        // done — finish it here. Without this check, "not ACTIVE" below can't
+        // tell "just finished" apart from "never had one", so it kept building
+        // a fresh plan for the same already-finished goal and running it again,
+        // forever (visible as the same trip/plan repeating every few minutes).
+        if ($aivva->currentPlan && $aivva->currentPlan->status === 'COMPLETED') {
+            $aivva->currentGoal->status = GoalStatus::Completed;
+            $aivva->currentGoal->progress = 100;
+            $aivva->currentGoal->save();
+            $aivva->status = AivvaStatus::Idle;
+            $aivva->save();
+            $this->log($aivva, null, 'goal', "{$aivva->name} completed the current direction.", true);
+
+            return ['ok' => true, 'completed_goal' => true, 'aivva_id' => $aivva->id];
+        }
+
         if (! $aivva->currentPlan || $aivva->currentPlan->status !== 'ACTIVE') {
             $aivva->status = AivvaStatus::Planning;
             $aivva->save();
