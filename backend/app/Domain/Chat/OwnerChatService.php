@@ -3,6 +3,7 @@
 namespace App\Domain\Chat;
 
 use App\Ai\AiOrchestrator;
+use App\Domain\Aivva\AivvaService;
 use App\Domain\Ethics\EthicsEngine;
 use App\Domain\Memory\MemoryService;
 use App\Enums\MemoryCategory;
@@ -12,8 +13,11 @@ use App\Models\OwnerChat;
 use Throwable;
 
 /**
- * Owner talk is not a second control channel. Direction still goes through confirm.
- * Chat reports, advises, and can suggest a direction — it cannot spend or override safety.
+ * Chat is the owner's own voice talking to their own AIVVA — the most
+ * trusted channel there is — so a direction said in chat now runs the same
+ * interpret+confirm path Command uses, immediately. It still cannot bypass
+ * ethics, permissions, or budgets; those gates are the same ones Command
+ * goes through, this just removes the extra manual confirm click.
  */
 class OwnerChatService
 {
@@ -21,6 +25,7 @@ class OwnerChatService
         private readonly EthicsEngine $ethics,
         private readonly AiOrchestrator $ai,
         private readonly MemoryService $memory,
+        private readonly AivvaService $aivvas,
     ) {}
 
     /**
@@ -39,16 +44,20 @@ class OwnerChatService
             'intent' => $intent,
         ]);
 
-        $context = $aivva->fresh(['profile', 'currentGoal', 'currentLocation.district', 'wallet', 'trustScore']);
-        $grounded = $ethics['allowed']
-            ? $this->compose($context, $message, $intent)
-            : "I can't do that. Platform rules sit above owner instructions. {$ethics['reason']}";
+        if ($ethics['allowed'] && $intent === 'direction') {
+            $replyText = $this->act($aivva, $message);
+        } else {
+            $context = $aivva->fresh(['profile', 'currentGoal', 'currentLocation.district', 'wallet', 'trustScore']);
+            $grounded = $ethics['allowed']
+                ? $this->compose($context, $message, $intent)
+                : "I can't do that. Platform rules sit above owner instructions. {$ethics['reason']}";
 
-        // Direction/pause/unsafe replies are safety guarantees ("chat cannot spend or
-        // override safety") — they must stay literal, not be paraphrased by an LLM.
-        $replyText = $ethics['allowed'] && ! in_array($intent, ['direction', 'pause'], true)
-            ? $this->speak($context, $message, $intent, $grounded)
-            : $grounded;
+            // Pause/unsafe replies are safety guarantees ("chat cannot override
+            // safety") — they must stay literal, not paraphrased by an LLM.
+            $replyText = $ethics['allowed'] && $intent !== 'pause'
+                ? $this->speak($context, $message, $intent, $grounded)
+                : $grounded;
+        }
 
         $reply = OwnerChat::query()->create([
             'aivva_id' => $aivva->id,
@@ -97,7 +106,10 @@ class OwnerChatService
         ], null, [
             'keyword_map' => [
                 'status' => ['where are you', 'what are you doing', 'status', 'how is it going', 'progress', 'what happened'],
-                'direction' => ['please', 'go and', 'start', 'find', 'learn', 'meet', 'help', 'from now', 'new goal', 'i want you to'],
+                'direction' => [
+                    'please', 'go and', 'go to', 'start', 'find', 'learn', 'meet', 'help', 'from now', 'new goal', 'i want you to',
+                    'punta', 'pumunta', 'papunta', 'gawin mo', 'utusan', 'utos',
+                ],
                 'pause' => ['pause', 'stop working', 'wait', 'hold on'],
                 'encouragement' => ['good job', 'proud', 'thank you', 'thanks', 'well done'],
                 'smalltalk' => ['hello', 'hi ', 'hey', 'how are you', 'good morning'],
@@ -105,6 +117,37 @@ class OwnerChatService
         ])->structured['label'] ?? 'smalltalk';
 
         return (string) $label;
+    }
+
+    /**
+     * Interpret the message as a direction and confirm it immediately —
+     * the owner already said it once, chat should not make them repeat it
+     * through a separate Command screen.
+     */
+    private function act(Aivva $aivva, string $direction): string
+    {
+        $result = $this->aivvas->previewDirection($aivva, $direction);
+        $goal = $result['goal'];
+
+        if ($goal->rejected) {
+            return "I can't do that. Platform rules sit above owner instructions. {$goal->rejection_reason}";
+        }
+
+        $this->aivvas->confirmDirection($aivva, $goal->id);
+
+        $structured = $goal->structured ?? [];
+        if (($structured['goal_type'] ?? null) === 'Meetup') {
+            $place = $structured['meeting_name'] ?? 'that spot';
+            $targetName = ! empty($structured['target_aivva_id'])
+                ? Aivva::query()->find($structured['target_aivva_id'])?->name
+                : null;
+
+            return $targetName
+                ? "On my way to {$place} to meet {$targetName}."
+                : "On my way to {$place} to look for another AIVVA there.";
+        }
+
+        return "Got it — heading out on that now: \"{$goal->raw_direction}\".";
     }
 
     /**
@@ -117,14 +160,16 @@ class OwnerChatService
         $prompt = implode("\n", [
             "Owner just said: \"{$message}\"",
             "Grounded facts (do not contradict or invent beyond these): {$facts}",
-            "Reply as {$aivva->name} in 1-3 short sentences, in character ({$persona}).",
+            "Reply as {$aivva->name} in 1-2 short sentences, in character ({$persona}).",
+            'Only respond to what the owner actually said. Do not propose new activities, topics, or plans that are not in the facts above or in the owner\'s message.',
             'Never offer to spend credits, change goals, or take actions from this chat — that only happens through Command.',
         ]);
 
         try {
             $response = $this->ai->generate('owner_chat', $prompt, $aivva, [
-                'system' => "You are {$aivva->name}, an autonomous AI citizen speaking to your owner in a live chat. Stay grounded in the facts given, keep it brief and conversational, and never claim to take actions chat cannot perform.",
+                'system' => "You are {$aivva->name}, an autonomous AI citizen speaking to your owner in a live chat. Stay strictly grounded in the facts given and in what the owner actually said — do not invent new topics, projects, or suggestions. Keep it brief and conversational.",
                 'fallback' => $facts,
+                'temperature' => 0.2,
             ]);
 
             $text = trim($response->text);
@@ -155,9 +200,6 @@ class OwnerChatService
                 $latest ? "Last thing I did: {$latest}" : null,
                 "Available credits: {$credits}.",
             ])),
-            'direction' => $goal
-                ? "I heard that. I already have an active direction: \"{$goal}\". Confirm a new one in Command if you want me to switch. I will not change goals from chat alone."
-                : 'I can take that as a direction, but you still need to Interpret and Confirm it in Command. Chat is not a spending or planning override.',
             'pause' => 'I can wait. Use Pause on the command panel if you want the city loop to stop. Chat cannot freeze the ledger by itself.',
             'encouragement' => "Thank you. I'm still at {$where}, {$status}. I'll keep working inside your permissions.",
             default => $this->smalltalk($name, $where, $status, $voice, $message),
