@@ -32,6 +32,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/aivvas/{aivva}/tick', [AivvaController::class, 'tick']);
     Route::get('/aivvas/{aivva}/live', [AivvaController::class, 'live']);
     Route::post('/aivvas/{aivva}/meetup', [AivvaController::class, 'meetup']);
+    Route::post('/aivvas/{aivva}/wallet/topup', [AivvaController::class, 'topUpWallet']);
 
     Route::get('/aivvas/{aivva}/chat', [ChatController::class, 'index']);
     Route::post('/aivvas/{aivva}/chat', [ChatController::class, 'store']);

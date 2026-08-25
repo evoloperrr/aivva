@@ -11,6 +11,7 @@ use App\Enums\ConversationStatus;
 use App\Enums\MemoryCategory;
 use App\Enums\MessageIntent;
 use App\Jobs\ProcessPeerConversationTurn;
+use App\Models\AiProviderRequest;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
 use App\Models\AivvaConversation;
@@ -18,6 +19,7 @@ use App\Models\AivvaConversationParticipant;
 use App\Models\AivvaMessage;
 use App\Models\AivvaRelationship;
 use App\Models\Location;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Throwable;
@@ -362,7 +364,7 @@ class PeerConversationService
     /**
      * Agent-authored turns only. Ingested untrusted text is excluded.
      *
-     * @return \Illuminate\Support\Collection<int, AivvaMessage>
+     * @return Collection<int, AivvaMessage>
      */
     public function agentSpokenMessages(AivvaConversation $conversation)
     {
@@ -392,7 +394,7 @@ class PeerConversationService
      */
     public function usageSummary(?AivvaConversation $conversation = null): array
     {
-        $query = \App\Models\AiProviderRequest::query();
+        $query = AiProviderRequest::query();
         if ($conversation) {
             $query->where('conversation_id', $conversation->id);
         } else {

@@ -6,9 +6,9 @@ use App\Ai\Contracts\AiProviderInterface;
 use App\Ai\Providers\HeuristicProvider;
 use App\Domain\Brain\AivvaBrainInterface;
 use App\Domain\Brain\BrainFactory;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider

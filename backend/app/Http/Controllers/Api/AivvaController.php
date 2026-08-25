@@ -139,6 +139,16 @@ class AivvaController extends Controller
         ]);
     }
 
+    public function topUpWallet(Request $request, Aivva $aivva): JsonResponse
+    {
+        $this->authorizeOwner($request->user(), $aivva);
+        $data = $request->validate([
+            'amount' => ['required', 'integer', 'min:1', 'max:100000'],
+        ]);
+
+        return response()->json(['data' => new AivvaResource($this->aivvas->topUpWallet($aivva, $data['amount']))]);
+    }
+
     public function meetup(Request $request, Aivva $aivva): JsonResponse
     {
         $this->authorizeOwner($request->user(), $aivva);

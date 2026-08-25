@@ -40,6 +40,7 @@ class Planner
             'Business' => $this->incomeSteps($creative),
             'Meetup' => $this->meetupSteps($goal->structured ?? []),
             'Visit' => $this->visitSteps($goal->structured ?? []),
+            'Help' => $this->helpSteps($goal->structured ?? []),
             default => $this->simpleSteps([
                 [ActionType::Travel, 'Walk the city and observe'],
                 [ActionType::ResearchMarket, 'Notice what the city needs'],
@@ -135,6 +136,37 @@ class Planner
                 'index' => 1,
                 'type' => ActionType::Reflect->value,
                 'title' => 'Look around and note what changed',
+                'status' => 'PENDING',
+                'payload' => [],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $structured
+     * @return list<array<string, mixed>>
+     */
+    private function helpSteps(array $structured): array
+    {
+        $targetId = $structured['target_aivva_id'] ?? null;
+        $amount = (int) ($structured['amount'] ?? 0);
+
+        return [
+            [
+                'index' => 0,
+                'type' => ActionType::GiveCredits->value,
+                'title' => 'Give credits',
+                'status' => 'PENDING',
+                'payload' => array_filter([
+                    'target_aivva_id' => $targetId,
+                    'amount' => $amount,
+                    'role' => 'buyer',
+                ]),
+            ],
+            [
+                'index' => 1,
+                'type' => ActionType::Reflect->value,
+                'title' => 'Remember the gift',
                 'status' => 'PENDING',
                 'payload' => [],
             ],

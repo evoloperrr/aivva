@@ -109,6 +109,7 @@ class OwnerChatService
                 'direction' => [
                     'please', 'go and', 'go to', 'start', 'find', 'learn', 'meet', 'help', 'from now', 'new goal', 'i want you to',
                     'punta', 'pumunta', 'papunta', 'gawin mo', 'utusan', 'utos',
+                    'give', 'gift', 'send', 'donate', 'tulong', 'tulungan', 'bigyan',
                 ],
                 'pause' => ['pause', 'stop working', 'wait', 'hold on'],
                 'encouragement' => ['good job', 'proud', 'thank you', 'thanks', 'well done'],
@@ -151,6 +152,15 @@ class OwnerChatService
 
         if ($goalType === 'Visit') {
             return "On my way to {$structured['meeting_name']}.";
+        }
+
+        if ($goalType === 'Help') {
+            $targetName = ! empty($structured['target_aivva_id'])
+                ? Aivva::query()->find($structured['target_aivva_id'])?->name
+                : 'them';
+            $amount = (int) ($structured['amount'] ?? 0);
+
+            return "On it — sending {$amount} credits to {$targetName}.";
         }
 
         return "Got it — heading out on that now: \"{$goal->raw_direction}\".";

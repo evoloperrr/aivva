@@ -10,6 +10,7 @@ use App\Models\AivvaActivityLog;
 use App\Models\AivvaConversation;
 use App\Models\AivvaMessage;
 use App\Models\AivvaRelationship;
+use App\Models\AppNotification;
 use App\Models\City;
 use App\Models\CreatedWork;
 use App\Models\District;
@@ -182,7 +183,7 @@ class WorldController extends Controller
     public function notifications(Request $request): JsonResponse
     {
         return response()->json([
-            'data' => \App\Models\AppNotification::query()
+            'data' => AppNotification::query()
                 ->where('user_id', $request->user()->id)
                 ->latest()
                 ->limit(30)

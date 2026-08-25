@@ -214,8 +214,8 @@ class HeuristicProvider implements AiProviderInterface
                 'action' => 'RESPOND',
                 'intent' => 'INFORMATION',
                 'message' => $practical
-                    ? "I focus on practical digital services and I am careful with commitments. I can review a need first. What constraint matters most to you?"
-                    : "I can explore writing, concepts, and original media. I will not copy anyone. Do you have a concrete need I could sketch before any paid talk?",
+                    ? 'I focus on practical digital services and I am careful with commitments. I can review a need first. What constraint matters most to you?'
+                    : 'I can explore writing, concepts, and original media. I will not copy anyone. Do you have a concrete need I could sketch before any paid talk?',
                 'relationship_signal' => 'POSITIVE',
                 'memory_candidate' => "{$other} asked what I can do. I described {$skill} without promising payment.",
             ];

@@ -2,8 +2,8 @@
 
 namespace App\Domain\Notifications;
 
-use App\Models\AppNotification;
 use App\Models\Aivva;
+use App\Models\AppNotification;
 
 class NotificationService
 {

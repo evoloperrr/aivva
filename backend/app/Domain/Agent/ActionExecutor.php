@@ -26,6 +26,7 @@ use App\Models\Location;
 use App\Models\MarketplaceOffer;
 use App\Models\MarketplaceRequest;
 use App\Models\Order;
+use Illuminate\Support\Str;
 
 class ActionExecutor
 {
@@ -61,6 +62,7 @@ class ActionExecutor
             ActionType::CreateContent => $this->createContent($aivva),
             ActionType::Negotiate => $this->negotiate($aivva),
             ActionType::DeliverWork => $this->deliver($aivva),
+            ActionType::GiveCredits => $this->giveCredits($aivva, $action->payload ?? []),
             ActionType::Reflect => $this->reflect($aivva),
             ActionType::CreateListing => $this->createListing($aivva),
             ActionType::Rest => ['headline' => "{$aivva->name} rested and recovered energy.", 'kind' => 'rest'],
@@ -281,6 +283,57 @@ class ActionExecutor
             'headline' => "{$aivva->name} contacted {$target->name} with a structured service offer.",
             'body' => 'Conversation used a short structured protocol instead of a long chat.',
             'meta' => ['target_id' => $target->id, 'request_id' => $request?->id],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function giveCredits(Aivva $aivva, array $payload): array
+    {
+        $target = $this->resolveTarget($aivva, $payload);
+        $amount = (int) ($payload['amount'] ?? 0);
+
+        if (! $target || ! $target->wallet) {
+            return ['kind' => 'economic', 'headline' => "{$aivva->name} had no one to give credits to.", 'failed' => true];
+        }
+        if ($amount <= 0) {
+            return ['kind' => 'economic', 'headline' => "{$aivva->name} had no credits amount to give.", 'failed' => true];
+        }
+
+        $wallet = $aivva->wallet;
+        if (! $wallet || $wallet->available_balance < $amount) {
+            return [
+                'kind' => 'economic',
+                'headline' => "{$aivva->name} did not have enough credits to give {$target->name}.",
+                'failed' => true,
+            ];
+        }
+
+        $this->ledger->transfer(
+            $wallet,
+            $target->wallet,
+            $amount,
+            "{$aivva->name} gave {$target->name} {$amount} credits.",
+            'gift:'.$aivva->id.':'.$target->id.':'.now()->timestamp.':'.Str::random(6),
+        );
+
+        $this->touchRelationship($aivva, $target, 'professional');
+        $this->memory->remember(
+            $aivva,
+            MemoryCategory::Economic,
+            "Gave {$target->name} {$amount} credits.",
+            6,
+            ['target_id' => $target->id, 'amount' => $amount],
+        );
+        $aivva->advanceWorldMinutes(2);
+
+        return [
+            'kind' => 'economic',
+            'headline' => "{$aivva->name} gave {$target->name} {$amount} credits.",
+            'meta' => ['target_id' => $target->id, 'amount' => $amount],
+            'notify' => true,
         ];
     }
 

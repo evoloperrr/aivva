@@ -5,7 +5,6 @@ namespace App\Domain\Chat;
 use App\Ai\AiOrchestrator;
 use App\Ai\PromptGuard;
 use App\Enums\ConversationAction;
-use App\Enums\MemoryCategory;
 use App\Models\Aivva;
 use App\Models\AivvaConversation;
 use App\Models\AivvaMessage;

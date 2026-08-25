@@ -14,16 +14,18 @@ use App\Domain\Memory\MemoryService;
 use App\Domain\Trust\TrustService;
 use App\Enums\BrainMode;
 use App\Enums\MemoryCategory;
+use App\Models\AiProviderRequest;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
 use App\Models\AivvaRelationship;
-use App\Models\AiProviderRequest;
 use App\Models\CreatedWork;
 use App\Models\GenesisExperiment;
 use App\Models\Location;
 use App\Models\MarketplaceOffer;
 use App\Models\MarketplaceRequest;
 use App\Models\Order;
+use App\Models\User;
+use Illuminate\Support\Collection;
 use RuntimeException;
 
 class GenesisEconomyService
@@ -211,7 +213,7 @@ class GenesisEconomyService
     }
 
     /**
-     * @return array{userA: \App\Models\User, userB: \App\Models\User, luna: Aivva, nova: Aivva}
+     * @return array{userA: User, userB: User, luna: Aivva, nova: Aivva}
      */
     public function preparePair(): array
     {
@@ -386,7 +388,7 @@ class GenesisEconomyService
 
     /**
      * @param  list<string>  $texts
-     * @param  array{userA: \App\Models\User, userB: \App\Models\User}  $pair
+     * @param  array{userA: User, userB: User}  $pair
      * @return list<string>
      */
     private function leakHits(array $texts, array $pair, string $marker): array
@@ -445,7 +447,7 @@ class GenesisEconomyService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, MarketplaceRequest>  $open
+     * @param  Collection<int, MarketplaceRequest>  $open
      */
     private function resolvePickedRequest(Aivva $seller, $open, mixed $requestedId): ?MarketplaceRequest
     {
@@ -455,6 +457,7 @@ class GenesisEconomyService
         }
 
         $best = $this->scoring->bestMatch($seller, $open);
+
         return $best instanceof MarketplaceRequest ? $best : null;
     }
 

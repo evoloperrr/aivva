@@ -5,7 +5,6 @@ namespace Tests\Unit;
 use App\Domain\Economy\WalletService;
 use App\Domain\Ledger\LedgerException;
 use App\Domain\Ledger\LedgerService;
-use App\Models\Aivva;
 use App\Models\LedgerEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

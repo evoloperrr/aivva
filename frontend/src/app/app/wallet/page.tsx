@@ -5,6 +5,8 @@ import { AivvaGate } from "@/components/chrome/AivvaGate";
 import { GlassPanel } from "@/components/chrome/GlassPanel";
 import { PageHeader } from "@/components/chrome/PageHeader";
 import { StatusCard } from "@/components/chrome/StatusCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { aivvas, type OrderRecord, type WalletRecord } from "@/lib/api";
 import { LOCAL_TEST_ECONOMY_BANNER } from "@/lib/copy";
 import { formatClock, formatCredits } from "@/lib/format";
@@ -32,8 +34,10 @@ function WalletBody({
   const [wallet, setWallet] = useState<WalletRecord | null>(null);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [topUpAmount, setTopUpAmount] = useState("1000");
+  const [topUpPending, setTopUpPending] = useState(false);
 
-  useEffect(() => {
+  const refresh = () => {
     aivvas
       .wallet(aivvaId)
       .then((res) => {
@@ -41,7 +45,24 @@ function WalletBody({
         setOrders(res.orders);
       })
       .catch((err: Error) => setError(err.message));
-  }, [aivvaId]);
+  };
+
+  useEffect(refresh, [aivvaId]);
+
+  const handleTopUp = async () => {
+    const amount = Number(topUpAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    setTopUpPending(true);
+    setError(null);
+    try {
+      await aivvas.topUpWallet(aivvaId, Math.floor(amount));
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not top up.");
+    } finally {
+      setTopUpPending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -53,6 +74,23 @@ function WalletBody({
       <div className="rounded-2xl border border-orange/40 bg-orange/10 px-4 py-3 text-sm text-orange">
         {LOCAL_TEST_ECONOMY_BANNER}
       </div>
+      <GlassPanel className="flex flex-wrap items-end gap-3 p-5">
+        <div className="flex-1 space-y-1">
+          <p className="text-sm font-medium">Owner top-up</p>
+          <p className="text-xs text-muted-foreground">Fund {aivvaName}&apos;s wallet directly from you as the owner.</p>
+        </div>
+        <Input
+          type="number"
+          min={1}
+          max={100000}
+          value={topUpAmount}
+          onChange={(e) => setTopUpAmount(e.target.value)}
+          className="w-32"
+        />
+        <Button onClick={handleTopUp} disabled={topUpPending}>
+          {topUpPending ? "Loading…" : "Top up"}
+        </Button>
+      </GlassPanel>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatusCard

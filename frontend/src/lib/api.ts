@@ -184,6 +184,8 @@ export const aivvas = {
   relationships: (id: string) => api<{ data: RelationRecord[] }>(`/api/aivvas/${id}/relationships`),
   works: (id: string) => api<{ data: WorkRecord[] }>(`/api/aivvas/${id}/works`),
   wallet: (id: string) => api<{ wallet: WalletRecord; orders: OrderRecord[] }>(`/api/aivvas/${id}/wallet`),
+  topUpWallet: (id: string, amount: number) =>
+    api<{ data: Aivva }>(`/api/aivvas/${id}/wallet/topup`, { method: "POST", body: JSON.stringify({ amount }) }),
   chat: (id: string) => api<{ data: ChatMessage[] }>(`/api/aivvas/${id}/chat`),
   sendChat: (id: string, message: string) =>
     api<{ reply: ChatMessage; data: ChatMessage[] }>(`/api/aivvas/${id}/chat`, {

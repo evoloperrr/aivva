@@ -9,7 +9,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-class ProcessPeerConversationTurn implements ShouldQueue, ShouldBeUnique
+class ProcessPeerConversationTurn implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 

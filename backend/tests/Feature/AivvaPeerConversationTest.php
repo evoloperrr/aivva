@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Aivva\AivvaService;
 use App\Domain\Chat\PeerConversationService;
 use App\Domain\Chat\TwoOwnerConversationFixture;
 use App\Domain\Memory\MemoryService;
@@ -9,6 +10,7 @@ use App\Enums\ConversationStatus;
 use App\Enums\MemoryCategory;
 use App\Jobs\ProcessPeerConversationTurn;
 use App\Models\AiProviderRequest;
+use App\Models\Aivva;
 use App\Models\AivvaMessage;
 use App\Models\AivvaRelationship;
 use App\Models\User;
@@ -20,7 +22,7 @@ class AivvaPeerConversationTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * @return array{userA: User, userB: User, luna: \App\Models\Aivva, nova: \App\Models\Aivva}
+     * @return array{userA: User, userB: User, luna: Aivva, nova: Aivva}
      */
     private function pair(): array
     {
@@ -181,7 +183,7 @@ class AivvaPeerConversationTest extends TestCase
     public function test_paused_aivva_cannot_initiate_conversation(): void
     {
         $pair = $this->pair();
-        app(\App\Domain\Aivva\AivvaService::class)->pause($pair['luna']);
+        app(AivvaService::class)->pause($pair['luna']);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Paused AIVVA cannot autonomously initiate conversation.');

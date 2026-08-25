@@ -14,6 +14,7 @@ use App\Enums\GoalStatus;
 use App\Enums\MemoryCategory;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
+use App\Models\AivvaGoal;
 use App\Models\District;
 use App\Models\Location;
 use App\Models\User;
@@ -187,7 +188,7 @@ class AivvaService
     }
 
     /**
-     * @return array{goal: \App\Models\AivvaGoal, interpretation: array<string, mixed>}
+     * @return array{goal: AivvaGoal, interpretation: array<string, mixed>}
      */
     public function previewDirection(Aivva $aivva, string $direction): array
     {
@@ -276,5 +277,12 @@ class AivvaService
     public function tick(Aivva $aivva): array
     {
         return $this->runtime->tick($aivva);
+    }
+
+    public function topUpWallet(Aivva $aivva, int $amount): Aivva
+    {
+        $this->wallets->topUp($aivva, $amount);
+
+        return $aivva->fresh('wallet');
     }
 }

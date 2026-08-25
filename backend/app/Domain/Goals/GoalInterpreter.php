@@ -84,13 +84,16 @@ class GoalInterpreter
             'owner_direction' => $direction,
         ];
 
-        // A direction naming a real place ("go to 8th street") should go there
-        // regardless of which broad type it got classified as — the location
-        // is more specific than the guess, so it wins.
-        $place = $this->placeGoalFromDirection($aivva, $direction);
-        if ($place) {
-            $type = $place['goal_type'];
-            $structured = $place;
+        // A direction naming a real amount and a real AIVVA ("give CASS 300
+        // credits") or a real place ("go to 8th street") is more specific
+        // than the broad classify() guess above, so it wins. Help is checked
+        // first since it requires the strongest signal (an amount + a name).
+        $help = $this->helpGoalFromDirection($aivva, $direction);
+        $place = $help ? null : $this->placeGoalFromDirection($aivva, $direction);
+        $override = $help ?? $place;
+        if ($override) {
+            $type = $override['goal_type'];
+            $structured = $override;
         }
 
         $this->ai->reason('plan', "Interpret direction: {$direction}", $aivva, [
@@ -110,7 +113,7 @@ class GoalInterpreter
         if (in_array($type, ['Social', 'Meetup', 'Visit', 'Exploration', 'Learning'], true)) {
             $permissions[] = 'Social (Level 1)';
         }
-        if (in_array($type, ['Income Generation', 'Business', 'Contribution'], true)) {
+        if (in_array($type, ['Income Generation', 'Business', 'Contribution', 'Help'], true)) {
             $permissions[] = 'Basic autonomy (Level 2)';
             $permissions[] = 'Economic autonomy if spending is required (Level 3)';
         }
@@ -165,6 +168,62 @@ class GoalInterpreter
             'location_id' => $location->id,
             'target_aivva_id' => $target?->id,
             'meeting_name' => $location->name,
+            'owner_direction' => $direction,
+        ];
+    }
+
+    /**
+     * A direction naming both an amount and a real AIVVA ("give CASS 300
+     * credits", "tulungan mo si CASS ng 300") becomes a Help goal that
+     * actually transfers credits — a wallet balance without a name and an
+     * amount is just noise, so both must resolve or this is skipped.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function helpGoalFromDirection(Aivva $aivva, string $direction): ?array
+    {
+        if (preg_match('/\b(?:give|gift|send|donate|help|tulong|tulungan|bigyan)\b/i', $direction) !== 1) {
+            return null;
+        }
+        if (preg_match('/\b(\d{1,7})\b/', $direction, $amountMatch) !== 1) {
+            return null;
+        }
+        $amount = (int) $amountMatch[1];
+        if ($amount <= 0) {
+            return null;
+        }
+
+        $skip = ['the', 'a', 'an', 'another', 'other', 'credit', 'credits', 'them', 'him', 'her', 'mo', 'ng', 'ko'];
+        $target = null;
+        foreach ([
+            '/\b(?:give|gift|send|donate|help|bigyan)\s+([a-z][\w\'-]{1,30})/i',
+            '/\bto\s+([a-z][\w\'-]{1,30})/i',
+            '/\bsi\s+([a-z][\w\'-]{1,30})/i',
+        ] as $pattern) {
+            if (preg_match($pattern, $direction, $match) !== 1) {
+                continue;
+            }
+            $candidate = trim($match[1]);
+            if (in_array(mb_strtolower($candidate), $skip, true)) {
+                continue;
+            }
+            $target = Aivva::query()
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($candidate)])
+                ->where('id', '!=', $aivva->id)
+                ->first();
+            if ($target) {
+                break;
+            }
+        }
+
+        if (! $target) {
+            return null;
+        }
+
+        return [
+            'goal_type' => 'Help',
+            'target_aivva_id' => $target->id,
+            'amount' => $amount,
             'owner_direction' => $direction,
         ];
     }

@@ -19,6 +19,7 @@ enum ActionType: string
     case AcceptOffer = 'ACCEPT_OFFER';
     case Negotiate = 'NEGOTIATE';
     case DeliverWork = 'DELIVER_WORK';
+    case GiveCredits = 'GIVE_CREDITS';
     case Reflect = 'REFLECT';
     case Rest = 'REST';
     case RecallHome = 'RECALL_HOME';
@@ -29,7 +30,7 @@ enum ActionType: string
         return match ($this) {
             self::Travel, self::RecallHome => AivvaStatus::Traveling,
             self::CreateContent => AivvaStatus::Creating,
-            self::Negotiate, self::SubmitOffer, self::AcceptOffer => AivvaStatus::Negotiating,
+            self::Negotiate, self::SubmitOffer, self::AcceptOffer, self::GiveCredits => AivvaStatus::Negotiating,
             self::Contact, self::SendMessage => AivvaStatus::Socializing,
             self::Reflect, self::AnalyzeSkills, self::InterpretGoal => AivvaStatus::Learning,
             self::CreatePlan => AivvaStatus::Planning,

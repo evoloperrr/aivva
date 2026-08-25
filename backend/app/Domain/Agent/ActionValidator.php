@@ -71,6 +71,7 @@ class ActionValidator
             ActionType::AcceptOffer,
             ActionType::Negotiate,
             ActionType::DeliverWork,
+            ActionType::GiveCredits,
         ], true);
 
         if ($economic && $spend > 0) {

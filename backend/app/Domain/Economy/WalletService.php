@@ -2,11 +2,12 @@
 
 namespace App\Domain\Economy;
 
-use App\Enums\LedgerAccountType;
 use App\Domain\Ledger\LedgerService;
+use App\Enums\LedgerAccountType;
 use App\Models\Aivva;
 use App\Models\LedgerAccount;
 use App\Models\Wallet;
+use Illuminate\Support\Str;
 
 class WalletService
 {
@@ -61,5 +62,22 @@ class WalletService
         }
 
         return $wallet;
+    }
+
+    /**
+     * Owner-initiated funding, separate from the one-time starter grant —
+     * an owner can top up their own AIVVA's wallet as many times as they want.
+     */
+    public function topUp(Aivva $aivva, int $amount): Wallet
+    {
+        $wallet = $this->ensureForAivva($aivva);
+        $this->ledger->issueToWallet(
+            $wallet,
+            $amount,
+            "Owner top-up for {$aivva->name}",
+            'topup:'.$aivva->id.':'.now()->timestamp.':'.Str::random(8),
+        );
+
+        return $wallet->fresh();
     }
 }
