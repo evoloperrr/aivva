@@ -66,4 +66,27 @@ class DirectionMeetupTest extends TestCase
         $interpret->assertOk();
         $this->assertSame('Social', $interpret->json('interpretation.goal.goal_type'));
     }
+
+    public function test_direction_naming_a_place_with_no_meet_becomes_a_plain_visit(): void
+    {
+        $this->seedCivilization();
+        $owner = User::factory()->create();
+        $alpha = $this->makeLivingAivva($owner, ['name' => 'ALPHA']);
+
+        $interpret = $this->actingAs($owner, 'sanctum')->postJson("/api/aivvas/{$alpha->id}/direction", [
+            'direction' => 'Punta ka sa Marketplace ngayon',
+        ]);
+
+        $interpret->assertOk();
+        $this->assertSame('Visit', $interpret->json('interpretation.goal.goal_type'));
+        $this->assertNotNull($interpret->json('interpretation.goal.location_id'));
+
+        $goalId = $interpret->json('goal_id');
+        $confirm = $this->actingAs($owner, 'sanctum')->postJson("/api/aivvas/{$alpha->id}/direction/confirm", [
+            'goal_id' => $goalId,
+        ]);
+
+        $confirm->assertOk();
+        $this->assertSame('TRAVEL', $confirm->json('data.plan.steps.0.type'));
+    }
 }

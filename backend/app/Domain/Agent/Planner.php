@@ -39,6 +39,7 @@ class Planner
             ]),
             'Business' => $this->incomeSteps($creative),
             'Meetup' => $this->meetupSteps($goal->structured ?? []),
+            'Visit' => $this->visitSteps($goal->structured ?? []),
             default => $this->simpleSteps([
                 [ActionType::Travel, 'Walk the city and observe'],
                 [ActionType::ResearchMarket, 'Notice what the city needs'],
@@ -107,6 +108,33 @@ class Planner
                 'index' => 2,
                 'type' => ActionType::Reflect->value,
                 'title' => 'Remember the meeting',
+                'status' => 'PENDING',
+                'payload' => [],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $structured
+     * @return list<array<string, mixed>>
+     */
+    private function visitSteps(array $structured): array
+    {
+        $locationId = $structured['location_id'] ?? null;
+        $name = $structured['meeting_name'] ?? 'the destination';
+
+        return [
+            [
+                'index' => 0,
+                'type' => ActionType::Travel->value,
+                'title' => "Travel to {$name}",
+                'status' => 'PENDING',
+                'payload' => array_filter(['location_id' => $locationId]),
+            ],
+            [
+                'index' => 1,
+                'type' => ActionType::Reflect->value,
+                'title' => 'Look around and note what changed',
                 'status' => 'PENDING',
                 'payload' => [],
             ],

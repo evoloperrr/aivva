@@ -67,8 +67,29 @@ class LocationResolver
 
         $phrase = trim($matches[1], " \t\n\r\0\x0B.");
         $phrase = preg_replace('/^(the|a|an)\s+/i', '', $phrase) ?? $phrase;
+        $phrase = $this->stripTrailingFillers($phrase);
 
         return $phrase !== '' ? $phrase : null;
+    }
+
+    /**
+     * Trailing Tagalog particles ("ngayon", "na", "muna"...) aren't part of a
+     * place name but land inside the captured phrase — strip them, or a
+     * geocode query like "8th st BGC ngayon" silently returns nothing.
+     */
+    private function stripTrailingFillers(string $phrase): string
+    {
+        $fillers = ['ngayon', 'na lang', 'nalang', 'muna', 'agad', 'ulit', 'nga', 'po', 'na'];
+
+        do {
+            $before = $phrase;
+            foreach ($fillers as $filler) {
+                $phrase = preg_replace('/\s+'.preg_quote($filler, '/').'$/i', '', $phrase) ?? $phrase;
+            }
+            $phrase = rtrim($phrase);
+        } while ($phrase !== $before && $phrase !== '');
+
+        return $phrase;
     }
 
     private function matchSeeded(string $phrase): ?Location

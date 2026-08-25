@@ -136,7 +136,9 @@ class OwnerChatService
         $this->aivvas->confirmDirection($aivva, $goal->id);
 
         $structured = $goal->structured ?? [];
-        if (($structured['goal_type'] ?? null) === 'Meetup') {
+        $goalType = $structured['goal_type'] ?? null;
+
+        if ($goalType === 'Meetup') {
             $place = $structured['meeting_name'] ?? 'that spot';
             $targetName = ! empty($structured['target_aivva_id'])
                 ? Aivva::query()->find($structured['target_aivva_id'])?->name
@@ -145,6 +147,10 @@ class OwnerChatService
             return $targetName
                 ? "On my way to {$place} to meet {$targetName}."
                 : "On my way to {$place} to look for another AIVVA there.";
+        }
+
+        if ($goalType === 'Visit') {
+            return "On my way to {$structured['meeting_name']}.";
         }
 
         return "Got it — heading out on that now: \"{$goal->raw_direction}\".";

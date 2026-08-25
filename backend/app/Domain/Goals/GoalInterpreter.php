@@ -84,12 +84,13 @@ class GoalInterpreter
             'owner_direction' => $direction,
         ];
 
-        if ($type === 'Social' && preg_match('/\bmeet\b/i', $direction) === 1) {
-            $meetup = $this->meetupFromDirection($aivva, $direction);
-            if ($meetup) {
-                $type = 'Meetup';
-                $structured = $meetup;
-            }
+        // A direction naming a real place ("go to 8th street") should go there
+        // regardless of which broad type it got classified as — the location
+        // is more specific than the guess, so it wins.
+        $place = $this->placeGoalFromDirection($aivva, $direction);
+        if ($place) {
+            $type = $place['goal_type'];
+            $structured = $place;
         }
 
         $this->ai->reason('plan', "Interpret direction: {$direction}", $aivva, [
@@ -106,7 +107,7 @@ class GoalInterpreter
         ]);
 
         $permissions = ['Observe'];
-        if (in_array($type, ['Social', 'Meetup', 'Exploration', 'Learning'], true)) {
+        if (in_array($type, ['Social', 'Meetup', 'Visit', 'Exploration', 'Learning'], true)) {
             $permissions[] = 'Social (Level 1)';
         }
         if (in_array($type, ['Income Generation', 'Business', 'Contribution'], true)) {
@@ -127,18 +128,28 @@ class GoalInterpreter
     }
 
     /**
-     * A direction like "go to 8th street and meet another aivva" names a real
-     * place. Resolve it and, if a specific AIVVA was named, resolve that too —
-     * otherwise leave the target open so a real nearby AIVVA is found at
-     * execution time (see ActionExecutor::resolveTarget).
+     * A direction naming a real place ("go to 8th street", "punta sa 8th
+     * avenue") resolves to a real Location regardless of the broad
+     * classify() guess. If it also asks to meet someone, that becomes a
+     * Meetup goal (optionally with a named AIVVA resolved from the text) —
+     * otherwise it's a plain Visit.
      *
      * @return array<string, mixed>|null
      */
-    private function meetupFromDirection(Aivva $aivva, string $direction): ?array
+    private function placeGoalFromDirection(Aivva $aivva, string $direction): ?array
     {
         $location = $this->locations->resolveFromText($direction);
         if (! $location) {
             return null;
+        }
+
+        if (preg_match('/\bmeet\b/i', $direction) !== 1) {
+            return [
+                'goal_type' => 'Visit',
+                'location_id' => $location->id,
+                'meeting_name' => $location->name,
+                'owner_direction' => $direction,
+            ];
         }
 
         $target = null;
