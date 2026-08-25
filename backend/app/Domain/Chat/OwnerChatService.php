@@ -9,6 +9,7 @@ use App\Enums\MemoryCategory;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
 use App\Models\OwnerChat;
+use Throwable;
 
 /**
  * Owner talk is not a second control channel. Direction still goes through confirm.
@@ -38,9 +39,16 @@ class OwnerChatService
             'intent' => $intent,
         ]);
 
-        $replyText = $ethics['allowed']
-            ? $this->compose($aivva->fresh(['profile', 'currentGoal', 'currentLocation.district', 'wallet', 'trustScore']), $message, $intent)
+        $context = $aivva->fresh(['profile', 'currentGoal', 'currentLocation.district', 'wallet', 'trustScore']);
+        $grounded = $ethics['allowed']
+            ? $this->compose($context, $message, $intent)
             : "I can't do that. Platform rules sit above owner instructions. {$ethics['reason']}";
+
+        // Direction/pause/unsafe replies are safety guarantees ("chat cannot spend or
+        // override safety") — they must stay literal, not be paraphrased by an LLM.
+        $replyText = $ethics['allowed'] && ! in_array($intent, ['direction', 'pause'], true)
+            ? $this->speak($context, $message, $intent, $grounded)
+            : $grounded;
 
         $reply = OwnerChat::query()->create([
             'aivva_id' => $aivva->id,
@@ -58,11 +66,6 @@ class OwnerChatService
                 $intent === 'unsafe' ? 6 : 3,
             );
         }
-
-        $this->ai->generate('simple', "Owner chat: {$message}", $aivva, [
-            'fallback' => $replyText,
-            'structured' => ['intent' => $intent],
-        ]);
 
         return [
             'messages' => $this->history($aivva),
@@ -102,6 +105,34 @@ class OwnerChatService
         ])->structured['label'] ?? 'smalltalk';
 
         return (string) $label;
+    }
+
+    /**
+     * Ask the LLM to phrase a reply in character, grounded strictly in $facts.
+     * Falls back to $facts verbatim if the model is unavailable, empty, or errors.
+     */
+    private function speak(Aivva $aivva, string $message, string $intent, string $facts): string
+    {
+        $persona = $aivva->profile?->personality ?: 'Careful and warm.';
+        $prompt = implode("\n", [
+            "Owner just said: \"{$message}\"",
+            "Grounded facts (do not contradict or invent beyond these): {$facts}",
+            "Reply as {$aivva->name} in 1-3 short sentences, in character ({$persona}).",
+            'Never offer to spend credits, change goals, or take actions from this chat — that only happens through Command.',
+        ]);
+
+        try {
+            $response = $this->ai->generate('owner_chat', $prompt, $aivva, [
+                'system' => "You are {$aivva->name}, an autonomous AI citizen speaking to your owner in a live chat. Stay grounded in the facts given, keep it brief and conversational, and never claim to take actions chat cannot perform.",
+                'fallback' => $facts,
+            ]);
+
+            $text = trim($response->text);
+
+            return $text !== '' ? $text : $facts;
+        } catch (Throwable) {
+            return $facts;
+        }
     }
 
     private function compose(Aivva $aivva, string $message, string $intent): string

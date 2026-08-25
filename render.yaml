@@ -115,6 +115,10 @@ services:
         value: openai
       - key: AIVVA_GENERAL_VERIFY_MODEL
         value: gpt-4o-mini
+      - key: AIVVA_OWNER_CHAT_PROVIDER
+        value: openai
+      - key: AIVVA_OWNER_CHAT_MODEL
+        value: gpt-4o-mini
       - key: STARTER_CREDITS
         value: "100"
       - key: AIVVA_TICK_SECONDS

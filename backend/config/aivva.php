@@ -102,6 +102,10 @@ return [
                 'provider' => env('AIVVA_MEMORY_PROVIDER', 'heuristic'),
                 'model' => env('AIVVA_MEMORY_MODEL', 'rules-v1'),
             ],
+            'owner_chat' => [
+                'provider' => env('AIVVA_OWNER_CHAT_PROVIDER', 'heuristic'),
+                'model' => env('AIVVA_OWNER_CHAT_MODEL', 'social-v1'),
+            ],
         ],
     ],
 ];
