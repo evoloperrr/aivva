@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
-import { Exo_2, Geist_Mono, Orbitron } from "next/font/google";
+import { Geist_Mono, Inter, Orbitron, Space_Grotesk } from "next/font/google";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth";
 import "./globals.css";
 
-const heading = Orbitron({
+const heading = Space_Grotesk({
   variable: "--font-heading",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
 });
 
-const sans = Exo_2({
+const sans = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
+});
+
+const display = Orbitron({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 const mono = Geist_Mono({
@@ -31,9 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`dark ${heading.variable} ${sans.variable} ${mono.variable} h-full`}
+      className={`dark ${heading.variable} ${sans.variable} ${display.variable} ${mono.variable} h-full overflow-x-hidden`}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full flex flex-col overflow-x-hidden font-sans">
         <AuthProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </AuthProvider>

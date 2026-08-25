@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { Globe2, ShieldCheck, TrendingUp, UserCircle2 } from "lucide-react";
 import { CivicSkyline } from "@/components/brand/CivicSkyline";
-import { Mark } from "@/components/brand/Mark";
-import { Wordmark } from "@/components/brand/Wordmark";
 import { OpenDemoButton } from "@/components/auth/OpenDemoButton";
 import { buttonVariants } from "@/components/ui/button";
 import { BRAND_FOOTER } from "@/lib/copy";
@@ -19,10 +17,10 @@ const navLinks = [
 ];
 
 const features = [
-  { icon: UserCircle2, title: "Own Your AI", body: "You own. You shape. You decide.", color: "#e85dff" },
-  { icon: Globe2, title: "Live in a World", body: "A living civilization, always evolving.", color: "#4d8fff" },
-  { icon: TrendingUp, title: "Create Value", body: "Work, trade, build, and grow.", color: "#22e3d0" },
-  { icon: ShieldCheck, title: "Built for Trust", body: "Privacy. Security. Transparency.", color: "#b8ff4a" },
+  { icon: UserCircle2, title: "Own Your AI", body: "You own. You shape. You decide.", color: "#F22BFF" },
+  { icon: Globe2, title: "Live in a World", body: "A living civilization, always evolving.", color: "#168BFF" },
+  { icon: TrendingUp, title: "Create Value", body: "Work, trade, build, and grow.", color: "#00E7FF" },
+  { icon: ShieldCheck, title: "Built for Trust", body: "Privacy. Security. Transparency.", color: "#20F3A4" },
 ];
 
 const moments = [
@@ -44,8 +42,8 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Link href="/" className="flex items-center gap-3">
-          <Mark className="bg-gradient-to-r from-[#ff8a3d] via-[#e85dff] to-[#22e3d0] bg-clip-text text-2xl text-transparent" />
-          <Wordmark uid="nav-wm" size="nav" className="hidden sm:block" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/aivva-symbol.svg" alt="AIVVA" className="h-9 w-auto" />
         </Link>
         <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((item) => (
@@ -62,7 +60,13 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative z-10 mx-auto flex max-w-4xl flex-col items-center px-4 pb-10 pt-6 text-center sm:pt-10">
         <p className="civic-kicker">△I▽▽△ · THE FIRST AI CIVILIZATION</p>
-        <Wordmark uid="hero-wm" size="hero" className="civic-wordmark mt-4 w-full max-w-[480px]" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/aivva-primary.svg"
+          alt="AIVVA"
+          className="civic-wordmark mt-4 block h-auto max-w-full"
+          style={{ width: "480px" }}
+        />
         <p className="civic-slogan mt-5">
           YOUR <span className="civic-life">AI LIFE</span>. YOUR <span className="civic-world">WORLD</span>. YOUR{" "}
           <span className="civic-future">FUTURE</span>.
@@ -75,43 +79,41 @@ export default function LandingPage() {
         <div className="mt-9 grid w-full gap-5 sm:grid-cols-2">
           <Link
             href="/register"
-            className="civic-panel group relative block overflow-hidden rounded-2xl p-8 text-center transition-transform hover:-translate-y-0.5"
-            style={{ boxShadow: "0 0 40px -12px rgba(232,93,255,0.45)", borderColor: "rgba(232,93,255,0.35)" }}
+            className="civic-panel civic-cta-card group relative block overflow-hidden rounded-2xl p-8 text-center transition-transform motion-safe:hover:-translate-y-0.5"
+            style={{ boxShadow: "0 0 40px -12px rgba(118,85,255,0.5)", borderColor: "rgba(118,85,255,0.4)" }}
           >
             <div
-              className="mx-auto flex size-16 items-center justify-center rounded-full border"
-              style={{ borderColor: "rgba(232,93,255,0.5)", background: "rgba(232,93,255,0.1)" }}
+              className="mx-auto flex size-16 items-center justify-center rounded-full border transition-transform group-hover:scale-105"
+              style={{ borderColor: "rgba(242,43,255,0.5)", background: "rgba(118,85,255,0.12)" }}
             >
-              <span className="text-2xl" style={{ color: "#e85dff" }}>
-                △
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/aivva-symbol.svg" alt="" className="h-8 w-auto" />
             </div>
             <p className="civic-cta mt-5 text-lg tracking-[0.12em] text-white">Create AIVVA</p>
             <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/50">Create your AI life</p>
             <div
               className="mx-auto mt-4 h-px w-16"
-              style={{ background: "linear-gradient(90deg, transparent, #e85dff, transparent)" }}
+              style={{ background: "linear-gradient(90deg, transparent, #F22BFF, transparent)" }}
             />
           </Link>
 
           <Link
             href="/register"
-            className="civic-panel group relative block overflow-hidden rounded-2xl p-8 text-center transition-transform hover:-translate-y-0.5"
-            style={{ boxShadow: "0 0 40px -12px rgba(34,227,208,0.45)", borderColor: "rgba(34,227,208,0.35)" }}
+            className="civic-panel civic-cta-card group relative block overflow-hidden rounded-2xl p-8 text-center transition-transform motion-safe:hover:-translate-y-0.5"
+            style={{ boxShadow: "0 0 40px -12px rgba(0,231,255,0.5)", borderColor: "rgba(0,231,255,0.4)" }}
           >
             <div
-              className="mx-auto flex size-16 items-center justify-center rounded-full border"
-              style={{ borderColor: "rgba(34,227,208,0.5)", background: "rgba(34,227,208,0.1)" }}
+              className="mx-auto flex size-16 items-center justify-center rounded-full border transition-transform group-hover:scale-105"
+              style={{ borderColor: "rgba(0,231,255,0.5)", background: "rgba(32,243,164,0.1)" }}
             >
-              <span className="text-2xl" style={{ color: "#22e3d0" }}>
-                ✦
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/aivva-symbol.svg" alt="" className="h-8 w-auto" />
             </div>
             <p className="civic-cta mt-5 text-lg tracking-[0.12em] text-white">Generate AIVVA</p>
             <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-white/50">Generate your AI life</p>
             <div
               className="mx-auto mt-4 h-px w-16"
-              style={{ background: "linear-gradient(90deg, transparent, #22e3d0, transparent)" }}
+              style={{ background: "linear-gradient(90deg, transparent, #00E7FF, transparent)" }}
             />
           </Link>
         </div>
@@ -156,13 +158,13 @@ export default function LandingPage() {
         </div>
 
         <aside className="civic-panel rounded-3xl p-6">
-          <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: "#ffe36a" }}>
+          <p className="text-[11px] uppercase tracking-[0.28em]" style={{ color: "#FFE52E" }}>
             Owner feed · LUNA
           </p>
           <ol className="mt-5 space-y-3">
             {moments.map((item) => (
               <li key={item.time} className="flex gap-4 text-sm">
-                <span className="font-mono" style={{ color: "#22e3d0" }}>
+                <span className="font-mono" style={{ color: "#00E7FF" }}>
                   {item.time}
                 </span>
                 <span className="text-white/85">{item.text}</span>
@@ -201,7 +203,11 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/10 px-4 py-6">
-        <p className="civic-footer mx-auto max-w-6xl">{BRAND_FOOTER}</p>
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-3 sm:flex-row">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/aivva-monochrome.svg" alt="" className="h-6 w-auto opacity-70" />
+          <p className="civic-footer">{BRAND_FOOTER}</p>
+        </div>
       </footer>
     </div>
   );

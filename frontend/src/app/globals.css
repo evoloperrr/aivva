@@ -10,6 +10,7 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-heading);
+  --font-display: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -114,7 +115,7 @@
 .mark {
   letter-spacing: 0.22em;
   font-weight: 600;
-  font-family: var(--font-heading), sans-serif;
+  font-family: var(--font-display), var(--font-heading), sans-serif;
 }
 
 .glass-panel {
@@ -457,7 +458,7 @@
 }
 
 .civic-kicker {
-  font-family: var(--font-heading), sans-serif;
+  font-family: var(--font-display), var(--font-heading), sans-serif;
   font-size: 11px;
   letter-spacing: 0.32em;
   text-transform: uppercase;
@@ -470,7 +471,7 @@
 }
 
 .civic-slogan {
-  font-family: var(--font-heading), sans-serif;
+  font-family: var(--font-display), var(--font-heading), sans-serif;
   font-size: clamp(0.78rem, 2vw, 1.05rem);
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -511,7 +512,7 @@
 }
 
 .civic-cta {
-  font-family: var(--font-heading), sans-serif;
+  font-family: var(--font-display), var(--font-heading), sans-serif;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-size: 11px;
@@ -537,8 +538,22 @@
   color: #eef4ff !important;
 }
 
+.civic-cta-card {
+  transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease;
+}
+
+.civic-cta-card:hover {
+  filter: brightness(1.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .civic-cta-card {
+    transition: none;
+  }
+}
+
 .civic-footer {
-  font-family: var(--font-heading), sans-serif;
+  font-family: var(--font-display), var(--font-heading), sans-serif;
   font-size: 10px;
   letter-spacing: 0.28em;
   text-transform: uppercase;
