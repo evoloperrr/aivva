@@ -78,6 +78,20 @@ class AgentRuntime
             return ['ok' => false, 'reason' => 'Daily action budget exhausted.', 'aivva_id' => $aivva->id];
         }
 
+        // Same backoff as the action budget above. Without this early return, a
+        // token-exhausted AIVVA kept creating a fresh plan, immediately getting
+        // blocked on the same exhausted budget inside ActionValidator, marking
+        // that step done, and repeating every tick forever — spamming "blocked"
+        // logs without ever executing anything, so world_minutes (and the
+        // displayed clock) never advanced either.
+        if ($permissions && $budget->tokens_used >= $permissions->daily_token_budget) {
+            $aivva->status = AivvaStatus::Idle;
+            $aivva->next_scheduled_at = now()->addHour();
+            $aivva->save();
+
+            return ['ok' => false, 'reason' => 'Daily token budget exhausted.', 'aivva_id' => $aivva->id];
+        }
+
         if (! $aivva->currentGoal || $aivva->currentGoal->status !== GoalStatus::Active) {
             $aivva->status = AivvaStatus::Idle;
             $aivva->save();

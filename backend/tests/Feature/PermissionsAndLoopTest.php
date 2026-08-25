@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
-use App\Domain\Aivva\AivvaService;
 use App\Domain\Agent\ActionValidator;
+use App\Domain\Aivva\AivvaService;
 use App\Enums\ActionType;
-use App\Enums\AutonomyLevel;
 use App\Enums\AivvaStatus;
+use App\Enums\AutonomyLevel;
+use App\Models\AivvaDailyBudget;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -46,6 +47,30 @@ class PermissionsAndLoopTest extends TestCase
         $tick = $service->tick($aivva->fresh());
         $this->assertArrayHasKey('ok', $tick);
         $this->assertGreaterThan(0, $aivva->activityLogs()->count());
+    }
+
+    public function test_exhausted_token_budget_backs_off_instead_of_looping(): void
+    {
+        $this->seedCivilization();
+        $aivva = $this->makeLivingAivva();
+        $service = app(AivvaService::class);
+        $preview = $service->previewDirection($aivva, 'Find ethical ways to create income using creative skills.');
+        $service->confirmDirection($aivva, $preview['goal']->id);
+
+        $budget = AivvaDailyBudget::todayFor($aivva->fresh());
+        $budget->update(['tokens_used' => $aivva->fresh()->permissions->daily_token_budget]);
+
+        $before = $aivva->activityLogs()->count();
+        $tick = $service->tick($aivva->fresh());
+        $after = $aivva->activityLogs()->count();
+
+        $this->assertFalse($tick['ok']);
+        $this->assertSame('Daily token budget exhausted.', $tick['reason']);
+        $this->assertSame($before, $after, 'An exhausted-budget tick must not create a new plan or log entry.');
+
+        $aivva->refresh();
+        $this->assertSame(AivvaStatus::Idle, $aivva->status);
+        $this->assertTrue($aivva->next_scheduled_at->gt(now()->addMinutes(50)));
     }
 
     public function test_over_limit_transaction_is_rejected(): void
