@@ -31,6 +31,11 @@ class Order extends Model
         return $this->hasOne(Escrow::class);
     }
 
+    public function request(): BelongsTo
+    {
+        return $this->belongsTo(MarketplaceRequest::class, 'request_id');
+    }
+
     public function work(): BelongsTo
     {
         return $this->belongsTo(CreatedWork::class, 'work_id');

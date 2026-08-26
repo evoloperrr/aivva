@@ -26,6 +26,8 @@ use App\Models\Location;
 use App\Models\MarketplaceOffer;
 use App\Models\MarketplaceRequest;
 use App\Models\Order;
+use App\Models\VerificationCase;
+use App\Models\Wallet;
 use Illuminate\Support\Str;
 
 class ActionExecutor
@@ -463,14 +465,23 @@ class ActionExecutor
         }
 
         $key = 'escrow:settle:'.$order->id;
+        $refundKey = 'escrow:refund:'.$order->id;
         if ($escrow->settle_idempotency_key === $key) {
             return ['kind' => 'deliver', 'headline' => 'Settlement already completed.', 'meta' => ['order_id' => $order->id]];
+        }
+        if ($escrow->refund_idempotency_key === $refundKey) {
+            return ['kind' => 'deliver', 'headline' => 'Refund already completed.', 'meta' => ['order_id' => $order->id]];
         }
 
         $work = CreatedWork::query()->where('creator_aivva_id', $aivva->id)->latest()->first();
         $buyer = $order->buyer;
         $sellerWallet = $aivva->wallet()->firstOrFail();
         $buyerWallet = $buyer->wallet()->firstOrFail();
+
+        $verification = $this->verifyDelivery($aivva, $order, $work);
+        if (! $verification['passed']) {
+            return $this->refundFailedVerification($aivva, $buyer, $order, $escrow, $buyerWallet, $refundKey, $verification);
+        }
 
         $this->ledger->settleEscrow(
             $buyerWallet,
@@ -524,6 +535,97 @@ class ActionExecutor
             'headline' => "{$aivva->name} earned {$order->amount} credits. Reputation increased.",
             'notify' => true,
             'meta' => ['order_id' => $order->id, 'amount' => $order->amount],
+        ];
+    }
+
+    /**
+     * Compares the agreed requirements against the delivered work before any
+     * money moves. The seller cannot self-approve — verification is a real
+     * gate, not a formality.
+     *
+     * @return array{passed: bool, issues: list<string>, case_id: string}
+     */
+    private function verifyDelivery(Aivva $aivva, Order $order, ?CreatedWork $work): array
+    {
+        $requirements = (string) ($order->request?->description ?? '');
+        $workText = $this->workToText($work);
+
+        $response = $this->ai->reason('order_verify', 'Verify delivered work against requirements.', $aivva, [
+            'task' => 'order_verify',
+            'kind' => 'order_verify',
+            'requirements' => $requirements,
+            'work' => $workText,
+        ]);
+
+        $status = (string) ($response->structured['status'] ?? 'FAIL');
+        $issues = $response->structured['issues'] ?? [];
+        $confidence = (float) ($response->structured['confidence'] ?? 0);
+
+        $case = VerificationCase::query()->create([
+            'claim' => "Delivered work meets requirements for order {$order->id}",
+            'subject_type' => Order::class,
+            'subject_id' => $order->id,
+            'confidence' => (int) round(max(0, min(1, $confidence)) * 100),
+            'report' => $response->structured,
+            'status' => $status,
+        ]);
+
+        return [
+            'passed' => $status === 'PASS',
+            'issues' => is_array($issues) ? array_values(array_map('strval', $issues)) : [],
+            'case_id' => $case->id,
+        ];
+    }
+
+    private function workToText(?CreatedWork $work): string
+    {
+        $body = $work?->body;
+        if (! is_array($body) || $body === []) {
+            return '';
+        }
+
+        return implode(' ', array_map(
+            fn ($value) => is_array($value) ? implode(' ', $value) : (string) $value,
+            $body,
+        ));
+    }
+
+    /**
+     * @param  array{passed: bool, issues: list<string>, case_id: string}  $verification
+     * @return array<string, mixed>
+     */
+    private function refundFailedVerification(Aivva $aivva, Aivva $buyer, Order $order, Escrow $escrow, Wallet $buyerWallet, string $refundKey, array $verification): array
+    {
+        $this->ledger->refundEscrow($buyerWallet, $order->amount, "Refund: verification failed for order {$order->id}", $refundKey);
+
+        $escrow->status = EscrowStatus::Refunded;
+        $escrow->settled_at = now();
+        $escrow->refund_idempotency_key = $refundKey;
+        $escrow->save();
+
+        $order->status = 'REFUNDED';
+        $order->save();
+
+        if ($order->request_id) {
+            MarketplaceRequest::query()->whereKey($order->request_id)->update(['status' => 'OPEN']);
+        }
+
+        $summary = $verification['issues'] === [] ? 'Delivered work did not match the agreed requirements.' : implode('; ', $verification['issues']);
+
+        $this->memory->remember(
+            $aivva,
+            MemoryCategory::Economic,
+            "Delivery to {$buyer->name} failed verification: {$summary} Escrow refunded.",
+            7,
+            ['order_id' => $order->id, 'verification_case_id' => $verification['case_id']],
+        );
+
+        return [
+            'kind' => 'verification',
+            'headline' => "{$aivva->name}'s delivery did not pass verification. Escrow refunded to {$buyer->name}.",
+            'body' => $summary,
+            'failed' => true,
+            'meta' => ['order_id' => $order->id, 'verification_case_id' => $verification['case_id']],
         ];
     }
 
