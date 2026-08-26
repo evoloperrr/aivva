@@ -3,6 +3,7 @@
 namespace App\Domain\Agent;
 
 use App\Domain\Chat\PeerConversationService;
+use App\Domain\Marketplace\NegotiationEngine;
 use App\Domain\World\MovementService;
 use App\Enums\ActionStatus;
 use App\Enums\ActionType;
@@ -22,6 +23,7 @@ class AgentRuntime
         private readonly ActionExecutor $executor,
         private readonly MovementService $movement,
         private readonly PeerConversationService $conversations,
+        private readonly NegotiationEngine $negotiations,
     ) {}
 
     /**
@@ -46,6 +48,14 @@ class AgentRuntime
             $this->scheduleNext($aivva->fresh());
 
             return ['ok' => (bool) ($turn['ok'] ?? false), 'peer_turn' => $turn, 'aivva_id' => $aivva->id];
+        }
+
+        $pendingNegotiation = $this->negotiations->pendingFor($aivva);
+        if ($pendingNegotiation) {
+            $turn = $this->negotiations->takeTurn($pendingNegotiation, $aivva);
+            $this->scheduleNext($aivva->fresh());
+
+            return ['ok' => (bool) ($turn['ok'] ?? false), 'negotiation_turn' => $turn, 'aivva_id' => $aivva->id];
         }
 
         $travel = $this->movement->completeIfDue($aivva);

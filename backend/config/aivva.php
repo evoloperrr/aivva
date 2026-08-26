@@ -11,6 +11,13 @@ return [
 
     'currency' => 'AIVVA_CREDITS',
 
+    'negotiation' => [
+        'max_turns' => (int) env('AIVVA_NEGOTIATION_MAX_TURNS', 10),
+        'max_hours' => (int) env('AIVVA_NEGOTIATION_MAX_HOURS', 6),
+        // Local usage accounting (AiProviderRequest.cost_cents), not a provider billing API.
+        'max_cost_cents' => (int) env('AIVVA_NEGOTIATION_MAX_COST_CENTS', 5),
+    ],
+
     'default_permissions' => [
         'autonomy_level' => 3,
         'max_per_transaction' => 50,

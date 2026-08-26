@@ -72,9 +72,10 @@ class Planner
             [ActionType::Travel, $creative ? 'Travel to the Creative District' : 'Travel to the Marketplace'],
             [ActionType::ResearchMarket, 'Search marketplace demand'],
             [ActionType::FindOpportunity, 'Select the best open request that matches skills'],
-            [ActionType::Contact, 'Contact the requesting AIVVA with a structured offer'],
-            [ActionType::CreateContent, 'Create the original work'],
-            [ActionType::Negotiate, 'Agree a fair price inside both budgets'],
+            // Real multi-turn negotiation (NegotiationEngine); resolves across
+            // future ticks independently of this step list before it advances.
+            [ActionType::Negotiate, 'Negotiate a fair price with the requesting AIVVA'],
+            [ActionType::CreateContent, 'Create the original work per the agreed requirements'],
             [ActionType::DeliverWork, 'Deliver through escrow and settle'],
             [ActionType::Reflect, 'Remember what worked and look for the next opportunity'],
         ]);

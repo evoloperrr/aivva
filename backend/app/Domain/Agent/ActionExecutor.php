@@ -7,6 +7,7 @@ use App\Ai\PromptGuard;
 use App\Domain\Chat\PeerConversationService;
 use App\Domain\Ethics\EthicsEngine;
 use App\Domain\Ledger\LedgerService;
+use App\Domain\Marketplace\NegotiationEngine;
 use App\Domain\Memory\MemoryService;
 use App\Domain\Notifications\NotificationService;
 use App\Domain\Trust\TrustService;
@@ -23,7 +24,6 @@ use App\Models\CreatedWork;
 use App\Models\District;
 use App\Models\Escrow;
 use App\Models\Location;
-use App\Models\MarketplaceOffer;
 use App\Models\MarketplaceRequest;
 use App\Models\Order;
 use App\Models\VerificationCase;
@@ -42,6 +42,7 @@ class ActionExecutor
         private readonly EthicsEngine $ethics,
         private readonly PromptGuard $guard,
         private readonly PeerConversationService $conversations,
+        private readonly NegotiationEngine $negotiations,
     ) {}
 
     /**
@@ -344,7 +345,13 @@ class ActionExecutor
      */
     private function createContent(Aivva $aivva): array
     {
-        $request = $this->openOpportunity($aivva);
+        // Only create for a real agreement — no deal, nothing to make.
+        $order = Order::query()->where('seller_aivva_id', $aivva->id)->where('status', 'ESCROWED')->latest()->first();
+        if (! $order) {
+            return ['kind' => 'create', 'headline' => "{$aivva->name} has no agreed order to create for yet.", 'failed' => true];
+        }
+
+        $request = $order->request ?? $this->openOpportunity($aivva);
         $kind = str_contains(mb_strtolower($request?->category ?? 'music'), 'writ') ? 'writing' : 'music';
         $title = $kind === 'music' ? 'Lantern Path' : 'City Brief';
         $created = $this->ai->generate('create', "Create original {$kind} for: ".($request?->title ?? $aivva->name), $aivva, [
@@ -381,6 +388,15 @@ class ActionExecutor
     /**
      * @return array<string, mixed>
      */
+    /**
+     * Starts a real multi-turn negotiation (NegotiationEngine) instead of
+     * deterministically auto-accepting. Subsequent turns for both sides are
+     * driven independently by AgentRuntime's pending-negotiation check on
+     * each AIVVA's own tick, the same way peer conversations continue
+     * outside the fixed plan-step list.
+     *
+     * @return array<string, mixed>
+     */
     private function negotiate(Aivva $aivva): array
     {
         $request = $this->openOpportunity($aivva);
@@ -388,59 +404,13 @@ class ActionExecutor
             return ['kind' => 'negotiate', 'headline' => "{$aivva->name} had no open request to negotiate.", 'failed' => true];
         }
 
-        $amount = (int) round(($request->budget_min + $request->budget_max) / 2);
-        $permissions = $aivva->permissions;
-        $amount = min($amount, $permissions?->max_per_transaction ?? $amount);
-
-        $offer = MarketplaceOffer::query()->create([
-            'request_id' => $request->id,
-            'from_aivva_id' => $aivva->id,
-            'to_aivva_id' => $request->buyer_aivva_id,
-            'amount' => $amount,
-            'message' => 'Fair mid-budget offer for original work.',
-            'status' => 'ACCEPTED',
-        ]);
-
-        $buyer = $request->buyer;
-        $order = Order::query()->create([
-            'buyer_aivva_id' => $request->buyer_aivva_id,
-            'seller_aivva_id' => $aivva->id,
-            'request_id' => $request->id,
-            'offer_id' => $offer->id,
-            'amount' => $amount,
-            'status' => 'ESCROWED',
-            'idempotency_key' => 'order:'.$request->id.':'.$aivva->id,
-        ]);
-
-        $this->ledger->lockEscrow(
-            $buyer->wallet()->firstOrFail(),
-            $amount,
-            "Escrow locked for {$request->title}",
-            'escrow:lock:'.$order->id,
-        );
-
-        Escrow::query()->create([
-            'order_id' => $order->id,
-            'amount' => $amount,
-            'status' => EscrowStatus::Locked,
-            'locked_at' => now(),
-        ]);
-
-        $request->status = 'IN_PROGRESS';
-        $request->save();
-        $this->memory->remember(
-            $aivva,
-            MemoryCategory::Economic,
-            "Negotiated {$amount} credits with {$buyer->name}. Escrow locked.",
-            7,
-            ['order_id' => $order->id, 'amount' => $amount],
-        );
-        $aivva->advanceWorldMinutes(5);
+        $negotiation = $this->negotiations->start($request, $aivva);
+        $aivva->advanceWorldMinutes(1);
 
         return [
             'kind' => 'negotiate',
-            'headline' => "{$aivva->name} negotiated a price of {$amount} credits. Escrow is locked.",
-            'meta' => ['order_id' => $order->id, 'amount' => $amount],
+            'headline' => "{$aivva->name} started negotiating with {$request->buyer?->name} over \"{$request->title}\".",
+            'meta' => ['negotiation_id' => $negotiation->id, 'request_id' => $request->id],
         ];
     }
 

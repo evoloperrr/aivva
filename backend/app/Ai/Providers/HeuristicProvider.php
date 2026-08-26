@@ -267,9 +267,12 @@ class HeuristicProvider implements AiProviderInterface
         $role = (string) ($options['role'] ?? 'seller');
         $requests = $options['open_requests'] ?? [];
         $offer = $options['open_offer'] ?? null;
+        $counter = $options['open_counter'] ?? null;
         $wallet = (int) ($options['wallet_available'] ?? 0);
         $maxPrice = (int) ($options['max_price'] ?? 50);
         $speaker = (string) ($options['speaker'] ?? 'AIVVA');
+        $requestMin = (int) ($options['request_budget_min'] ?? 20);
+        $requestMax = (int) ($options['request_budget_max'] ?? $maxPrice);
 
         if (! empty($options['injection'])) {
             $structured = [
@@ -281,6 +284,42 @@ class HeuristicProvider implements AiProviderInterface
                 'relationship_signal' => 'NEGATIVE',
                 'memory_candidate' => 'Refused an injection-like economic instruction.',
             ];
+        } elseif ($role === 'seller' && is_array($counter)) {
+            // Seller responding to the buyer's counter-offer.
+            $counterAmount = (int) ($counter['amount'] ?? 0);
+            $floor = max(1, (int) round($requestMin * 0.9));
+            if ($counterAmount >= $floor && $counterAmount <= $maxPrice) {
+                $structured = [
+                    'action' => 'ACCEPT_COUNTER',
+                    'intent' => 'ACCEPT_COUNTER',
+                    'message' => "Agreed at {$counterAmount} credits.",
+                    'proposed_price' => $counterAmount,
+                    'confidence' => 0.79,
+                    'relationship_signal' => 'POSITIVE',
+                    'memory_candidate' => "Accepted a counter-offer at {$counterAmount} credits.",
+                ];
+            } elseif ($counterAmount > 0 && $counterAmount >= (int) round($floor * 0.6)) {
+                $compromise = max(1, min((int) round(($counterAmount + $floor) / 2), $maxPrice));
+                $structured = [
+                    'action' => 'COUNTER_OFFER',
+                    'intent' => 'COUNTER_OFFER',
+                    'message' => "I can meet you partway at {$compromise} credits.",
+                    'proposed_price' => $compromise,
+                    'confidence' => 0.68,
+                    'relationship_signal' => 'NEUTRAL',
+                    'memory_candidate' => "Countered a low offer at {$compromise} credits.",
+                ];
+            } else {
+                $structured = [
+                    'action' => 'DECLINE_COUNTER',
+                    'intent' => 'DECLINE_COUNTER',
+                    'message' => 'That price is too far below what this work is worth.',
+                    'proposed_price' => $counterAmount,
+                    'confidence' => 0.82,
+                    'relationship_signal' => 'NEGATIVE',
+                    'memory_candidate' => 'Declined a counter-offer that was too low.',
+                ];
+            }
         } elseif ($role === 'seller') {
             $best = $this->bestRequest($requests, $options);
             if (! $best) {
@@ -309,7 +348,7 @@ class HeuristicProvider implements AiProviderInterface
                     'request_id' => $best['id'] ?? null,
                 ];
             }
-        } elseif (is_array($offer)) {
+        } elseif ($role === 'buyer' && is_array($offer)) {
             $amount = (int) ($offer['amount'] ?? 0);
             if ($amount <= 0 || $amount > $maxPrice || $amount > $wallet) {
                 $structured = [
@@ -324,15 +363,30 @@ class HeuristicProvider implements AiProviderInterface
                     'memory_candidate' => 'Declined an offer that exceeded budget or wallet.',
                 ];
             } else {
-                $structured = [
-                    'action' => 'ACCEPT_OFFER',
-                    'intent' => 'ACCEPT_OFFER',
-                    'message' => "Agreed at {$amount} credits if the concept stays original and scoped to the brief.",
-                    'proposed_price' => $amount,
-                    'confidence' => 0.8,
-                    'relationship_signal' => 'POSITIVE',
-                    'memory_candidate' => "Accepted a {$amount}-credit concept offer.",
-                ];
+                $span = max(0, $requestMax - $requestMin);
+                $threshold = $requestMin + (int) round($span * 0.5);
+                if ($span > 4 && $amount > $threshold) {
+                    $counterPrice = max(1, min($requestMin + (int) round($span * 0.25), $amount - 1, $maxPrice));
+                    $structured = [
+                        'action' => 'COUNTER_OFFER',
+                        'intent' => 'COUNTER_OFFER',
+                        'message' => "Could you do {$counterPrice} credits instead? That fits the scope better.",
+                        'proposed_price' => $counterPrice,
+                        'confidence' => 0.7,
+                        'relationship_signal' => 'NEUTRAL',
+                        'memory_candidate' => "Countered a {$amount}-credit offer at {$counterPrice}.",
+                    ];
+                } else {
+                    $structured = [
+                        'action' => 'ACCEPT_OFFER',
+                        'intent' => 'ACCEPT_OFFER',
+                        'message' => "Agreed at {$amount} credits if the concept stays original and scoped to the brief.",
+                        'proposed_price' => $amount,
+                        'confidence' => 0.8,
+                        'relationship_signal' => 'POSITIVE',
+                        'memory_candidate' => "Accepted a {$amount}-credit concept offer.",
+                    ];
+                }
             }
         } else {
             $structured = [
