@@ -7,6 +7,7 @@ use App\Domain\Ledger\LedgerService;
 use App\Domain\Trust\TrustService;
 use App\Enums\AivvaStatus;
 use App\Models\Aivva;
+use App\Models\AivvaRuntimeLocation;
 use App\Models\LedgerTransaction;
 use App\Models\Location;
 use App\Models\MarketplaceListing;
@@ -42,6 +43,24 @@ class PlatformCivilizationSeeder extends Seeder
         $home = Location::query()->where('is_home_template', true)->firstOrFail();
         $studio = Location::query()->where('slug', 'music-studio-03')->firstOrFail();
         $market = Location::query()->where('slug', 'central-exchange')->firstOrFail();
+
+        foreach ([
+            ['id' => 'test_location_001', 'label' => 'Plaza spawn', 'x' => -4, 'y' => 2, 'logical' => $home],
+            ['id' => 'test_location_002', 'label' => 'Secondary plaza point', 'x' => 4, 'y' => 2, 'logical' => $market],
+            ['id' => 'test_social_area', 'label' => 'Plaza social area', 'x' => 0, 'y' => -1, 'logical' => Location::query()->where('slug', 'meeting-lawn')->firstOrFail()],
+        ] as $runtimeLocation) {
+            AivvaRuntimeLocation::query()->updateOrCreate(
+                ['id' => $runtimeLocation['id']],
+                [
+                    'label' => $runtimeLocation['label'],
+                    'x' => $runtimeLocation['x'],
+                    'y' => $runtimeLocation['y'],
+                    'z' => 0,
+                    'logical_location_id' => $runtimeLocation['logical']->id,
+                    'enabled' => true,
+                ],
+            );
+        }
 
         $atlas = $this->ensureAivva($platform, [
             'name' => 'ATLAS',

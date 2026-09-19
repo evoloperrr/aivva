@@ -16,6 +16,9 @@ server {
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_read_timeout 120;
+        # Runtime SSE emits heartbeats incrementally. Never hold PHP output in
+        # the reverse-proxy buffer until the 25-second stream closes.
+        fastcgi_buffering off;
     }
 
     location ~ /\.(?!well-known).* {

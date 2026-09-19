@@ -12,7 +12,7 @@ class RuntimeActionService
     public function create(Aivva $aivva, RuntimeActionType $type, array $payload, string $initiatedBy = 'AI', ?string $sourceActionId = null): AivvaRuntimeAction
     {
         $this->validatePayload($aivva, $type, $payload);
-        if ($initiatedBy === 'AI') {
+        if (in_array($initiatedBy, ['AI', 'AI_PLAZA_DEMO'], true)) {
             abort_unless(config('aivva.runtime.ai_control_enabled') && $aivva->control_mode === AivvaControlMode::AiTwin, 409, 'AI Twin does not control this AIVVA.');
         }
         if ($sourceActionId && $existing = AivvaRuntimeAction::query()->where('source_action_id', $sourceActionId)->first()) {
@@ -22,6 +22,7 @@ class RuntimeActionService
             'aivva_id' => $aivva->id, 'source_action_id' => $sourceActionId, 'type' => $type,
             'payload' => $payload, 'status' => RuntimeActionStatus::Requested,
             'correlation_id' => (string) Str::uuid(), 'initiated_by' => $initiatedBy,
+            'version' => 1,
             'expires_at' => now()->addSeconds((int) config('aivva.runtime.action_ttl_seconds', 120)),
         ]);
         $this->log($action, RuntimeActionStatus::Requested->value);
@@ -67,7 +68,7 @@ class RuntimeActionService
 
     public function acknowledge(AivvaRuntimeAction $runtimeAction, string $executionId, RuntimeActionStatus $status, array $result = [], ?string $failureCode = null): AivvaRuntimeAction
     {
-        return DB::transaction(function () use ($runtimeAction, $executionId, $status, $result, $failureCode) {
+        $completed = DB::transaction(function () use ($runtimeAction, $executionId, $status, $result, $failureCode) {
             $action = AivvaRuntimeAction::query()->lockForUpdate()->findOrFail($runtimeAction->id);
             abort_unless(in_array($status, [RuntimeActionStatus::Completed, RuntimeActionStatus::Failed, RuntimeActionStatus::Cancelled], true), 422, 'Unsupported acknowledgement state.');
             if ($action->status === $status && hash_equals((string) $action->execution_id, $executionId)) return $action;
@@ -81,6 +82,21 @@ class RuntimeActionService
             $this->log($action, $status->value);
             return $action;
         });
+
+        if ($status === RuntimeActionStatus::Completed) {
+            $this->continuePlazaDemo($completed);
+        }
+
+        return $completed;
+    }
+
+    public function startPlazaDemo(Aivva $aivva): AivvaRuntimeAction
+    {
+        abort_unless(config('aivva.runtime.plaza_demo_enabled'), 503, 'AIVVA Plaza demo is disabled.');
+        abort_unless($aivva->name === 'LUNA', 422, 'The canonical Plaza demo requires LUNA.');
+        abort_if($aivva->runtimeActions()->whereIn('status', [RuntimeActionStatus::Requested, RuntimeActionStatus::Executing])->exists(), 409, 'LUNA already has an active runtime action.');
+
+        return $this->create($aivva, RuntimeActionType::MoveTo, ['locationId' => 'test_social_area'], 'AI_PLAZA_DEMO');
     }
 
     public function cancel(AivvaRuntimeAction $runtimeAction): AivvaRuntimeAction
@@ -131,6 +147,26 @@ class RuntimeActionService
         $action->aivva()->update(['status' => AivvaStatus::Idle, 'current_action_id' => null,
             'next_scheduled_at' => now()->addSeconds((int) config('aivva.tick_seconds', 4)),
             'state_version' => DB::raw('state_version + 1')]);
+    }
+
+    private function continuePlazaDemo(AivvaRuntimeAction $completed): void
+    {
+        if ($completed->initiated_by !== 'AI_PLAZA_DEMO' || ! config('aivva.runtime.plaza_demo_enabled')) return;
+        if ($completed->aivva->runtimeActions()->whereIn('status', [RuntimeActionStatus::Requested, RuntimeActionStatus::Executing])->exists()) return;
+
+        $nova = Aivva::query()->where('is_platform', true)->where('name', 'NOVA')->first();
+        if (! $nova) {
+            Log::warning('AIVVA_PLAZA_DEMO_STOPPED', ['actionId' => $completed->id, 'reason' => 'NOVA_MISSING']);
+            return;
+        }
+
+        $next = match ($completed->type) {
+            RuntimeActionType::MoveTo => [RuntimeActionType::FaceTarget, ['targetAivvaId' => $nova->id]],
+            RuntimeActionType::FaceTarget => [RuntimeActionType::Interact, ['targetAivvaId' => $nova->id]],
+            RuntimeActionType::Interact => [RuntimeActionType::Say, ['text' => 'Hello NOVA.']],
+            default => null,
+        };
+        if ($next) $this->create($completed->aivva, $next[0], $next[1], 'AI_PLAZA_DEMO');
     }
 
     private function validatePayload(Aivva $aivva, RuntimeActionType $type, array $payload): void

@@ -8,6 +8,7 @@ return [
         'action_lease_seconds' => (int) env('AIVVA_RUNTIME_ACTION_LEASE_SECONDS', env('AIVVA_UE_ACTION_LEASE_SECONDS', 30)),
         'event_stream_seconds' => (int) env('AIVVA_RUNTIME_EVENT_STREAM_SECONDS', 25),
         'token_ttl_minutes' => (int) env('AIVVA_RUNTIME_TOKEN_TTL_MINUTES', env('AIVVA_UE_TOKEN_TTL_MINUTES', 15)),
+        'plaza_demo_enabled' => filter_var(env('AIVVA_PLAZA_DEMO_ENABLED', false), FILTER_VALIDATE_BOOL),
         'integration_secret' => env('XENTOZ_AIVVA_INTEGRATION_SECRET', ''),
         'assertion_ttl_seconds' => (int) env('XENTOZ_AIVVA_ASSERTION_TTL_SECONDS', 300),
     ],

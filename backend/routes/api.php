@@ -30,10 +30,13 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/aivvas', [AivvaController::class, 'store']);
     Route::get('/aivvas/{aivva}', [AivvaController::class, 'show']);
     Route::get('/runtime/aivvas/{aivva}', [AivvaRuntimeController::class, 'show']);
+    Route::get('/runtime/health', [RuntimeActionController::class, 'health']);
     Route::get('/runtime/aivvas/{aivva}/scene', [AivvaRuntimeController::class, 'scene']);
     Route::patch('/runtime/aivvas/{aivva}/control-mode', [AivvaRuntimeController::class, 'controlMode']);
     Route::get('/runtime/aivvas/{aivva}/actions/active', [RuntimeActionController::class, 'active']);
     Route::get('/runtime/aivvas/{aivva}/actions/events', [RuntimeActionController::class, 'events']);
+    Route::post('/runtime/aivvas/{aivva}/demo/start', [RuntimeActionController::class, 'startDemo']);
+    Route::get('/runtime/aivvas/{aivva}/actions/{runtimeAction}/trace', [RuntimeActionController::class, 'trace']);
     Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/claim', [RuntimeActionController::class, 'claim']);
     Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/status', [RuntimeActionController::class, 'status']);
     Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/cancel', [RuntimeActionController::class, 'cancel']);

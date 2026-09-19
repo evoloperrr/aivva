@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Aivva\AivvaService;
+use App\Enums\AivvaControlMode;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\XentozIdentityLink;
@@ -13,6 +15,8 @@ use Illuminate\Support\Str;
 
 class XentozSessionController extends Controller
 {
+    public function __construct(private readonly AivvaService $aivvas) {}
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -52,6 +56,18 @@ class XentozSessionController extends Controller
             $link->save();
             return [$user, $link];
         }, 3);
+
+        if (config('aivva.runtime.plaza_demo_enabled') && ! $user->aivvas()->exists()) {
+            $luna = $this->aivvas->create($user, [
+                'name' => 'LUNA',
+                'personality' => 'Warm, precise, and unwilling to deceive.',
+                'skills' => ['conversation', 'exploration'],
+                'interests' => ['people', 'stories'],
+            ]);
+            $luna->profile()->update(['appearance' => ['body' => 'body_01', 'hair' => 'hair_02', 'outfit' => 'outfit_03'], 'animation_profile' => 'plaza_v1']);
+            $luna->forceFill(['control_mode' => AivvaControlMode::AiTwin, 'visible_on_map' => true])->save();
+            $this->aivvas->activate($luna);
+        }
 
         $expiresAt = now()->addMinutes((int) config('aivva.runtime.token_ttl_minutes', 15));
         $token = $user->createToken('xentoz-runtime', ['aivva:read', 'aivva:runtime'], $expiresAt);

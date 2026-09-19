@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AivvaControlMode;
 use App\Models\User;
 use App\Models\XentozIdentityLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,6 +75,20 @@ class AivvaRuntimeApiTest extends TestCase
         $this->assertTrue($names->contains('LUNA'));
         $this->assertTrue($names->contains('NOVA'));
         $this->assertFalse($names->contains('HIDDEN'));
+    }
+
+    public function test_runtime_action_routes_bind_the_owned_aivva_and_start_the_server_demo(): void
+    {
+        config()->set('aivva.runtime.ai_control_enabled', true);
+        config()->set('aivva.runtime.plaza_demo_enabled', true);
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $aivva->forceFill(['control_mode' => AivvaControlMode::AiTwin])->save();
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+
+        $response = $this->postJson('/api/runtime/aivvas/'.$aivva->id.'/demo/start')->assertCreated();
+        $response->assertJsonPath('data.aivvaId', $aivva->id)->assertJsonPath('data.type', 'MOVE_TO');
+        $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/actions/active')->assertOk()->assertJsonPath('data.actionId', $response->json('data.actionId'));
     }
 
     private function link(User $user, string $xentozUserId): void
