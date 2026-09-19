@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -31,5 +32,10 @@ class User extends Authenticatable
     public function aivvas(): HasMany
     {
         return $this->hasMany(Aivva::class, 'owner_id');
+    }
+
+    public function xentozIdentityLink(): HasOne
+    {
+        return $this->hasOne(XentozIdentityLink::class);
     }
 }

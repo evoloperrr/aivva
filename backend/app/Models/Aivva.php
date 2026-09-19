@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AivvaControlMode;
 use App\Enums\AivvaStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +17,7 @@ class Aivva extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'owner_id', 'name', 'slug', 'status',
+        'owner_id', 'name', 'slug', 'status', 'control_mode', 'state_version',
         'current_goal_id', 'current_plan_id', 'current_action_id',
         'current_location_id', 'destination_location_id', 'home_location_id',
         'energy', 'life_points', 'world_minutes',
@@ -28,6 +29,8 @@ class Aivva extends Model
     {
         return [
             'status' => AivvaStatus::class,
+            'control_mode' => AivvaControlMode::class,
+            'state_version' => 'integer',
             'energy' => 'integer',
             'life_points' => 'integer',
             'world_minutes' => 'integer',

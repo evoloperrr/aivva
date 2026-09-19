@@ -13,7 +13,9 @@ class AivvaPermission extends Model
         'daily_ai_budget_cents', 'daily_token_budget', 'daily_action_budget',
         'require_approval_above', 'can_travel', 'can_socialize', 'can_create',
         'can_transact', 'autonomous_interaction', 'blocked_aivva_ids',
-        'approval_required_actions',
+        'approval_required_actions', 'allow_movement', 'allow_social_interaction',
+        'allow_public_chat', 'allow_private_chat', 'allow_purchases', 'allow_wallet',
+        'allow_creation', 'allow_work', 'allow_invites',
     ];
 
     protected function casts(): array
@@ -25,6 +27,15 @@ class AivvaPermission extends Model
             'can_create' => 'boolean',
             'can_transact' => 'boolean',
             'autonomous_interaction' => 'boolean',
+            'allow_movement' => 'boolean',
+            'allow_social_interaction' => 'boolean',
+            'allow_public_chat' => 'boolean',
+            'allow_private_chat' => 'boolean',
+            'allow_purchases' => 'boolean',
+            'allow_wallet' => 'boolean',
+            'allow_creation' => 'boolean',
+            'allow_work' => 'boolean',
+            'allow_invites' => 'boolean',
             'blocked_aivva_ids' => 'array',
             'approval_required_actions' => 'array',
         ];

@@ -9,7 +9,7 @@ class AivvaProfile extends Model
 {
     protected $fillable = [
         'aivva_id', 'personality', 'skills', 'interests', 'work_preferences',
-        'risk_tolerance', 'bio', 'portrait_seed', 'privacy',
+        'risk_tolerance', 'bio', 'portrait_seed', 'appearance', 'animation_profile', 'privacy',
     ];
 
     protected function casts(): array
@@ -18,6 +18,7 @@ class AivvaProfile extends Model
             'skills' => 'array',
             'interests' => 'array',
             'work_preferences' => 'array',
+            'appearance' => 'array',
             'privacy' => 'array',
         ];
     }

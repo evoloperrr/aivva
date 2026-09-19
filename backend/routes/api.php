@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AivvaController;
+use App\Http\Controllers\Api\AivvaRuntimeController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DirectionController;
@@ -27,6 +28,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/aivvas', [AivvaController::class, 'index']);
     Route::post('/aivvas', [AivvaController::class, 'store']);
     Route::get('/aivvas/{aivva}', [AivvaController::class, 'show']);
+    Route::get('/runtime/aivvas/{aivva}', [AivvaRuntimeController::class, 'show']);
+    Route::patch('/runtime/aivvas/{aivva}/control-mode', [AivvaRuntimeController::class, 'controlMode']);
     Route::post('/aivvas/{aivva}/activate', [AivvaController::class, 'activate']);
     Route::post('/aivvas/{aivva}/pause', [AivvaController::class, 'pause']);
     Route::post('/aivvas/{aivva}/recall', [AivvaController::class, 'recall']);
