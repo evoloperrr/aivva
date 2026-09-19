@@ -35,4 +35,9 @@ class AivvaAction extends Model
     {
         return $this->belongsTo(Aivva::class);
     }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(AivvaPlan::class, 'plan_id');
+    }
 }

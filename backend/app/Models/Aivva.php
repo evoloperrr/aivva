@@ -133,6 +133,11 @@ class Aivva extends Model
         return $this->hasMany(AivvaAction::class);
     }
 
+    public function runtimeActions(): HasMany
+    {
+        return $this->hasMany(AivvaRuntimeAction::class);
+    }
+
     public function chats(): HasMany
     {
         return $this->hasMany(OwnerChat::class);

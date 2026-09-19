@@ -9,6 +9,9 @@ return [
         'integration_secret' => env('XENTOZ_AIVVA_INTEGRATION_SECRET', ''),
         'assertion_ttl_seconds' => (int) env('XENTOZ_AIVVA_ASSERTION_TTL_SECONDS', 300),
         'token_ttl_minutes' => (int) env('AIVVA_UE_TOKEN_TTL_MINUTES', 15),
+        'action_ttl_seconds' => (int) env('AIVVA_UE_ACTION_TTL_SECONDS', 120),
+        'action_lease_seconds' => (int) env('AIVVA_UE_ACTION_LEASE_SECONDS', 30),
+        'move_timeout_seconds' => (int) env('AIVVA_UE_MOVE_TIMEOUT_SECONDS', 60),
     ],
 
     'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),

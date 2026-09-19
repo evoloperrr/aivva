@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DirectionController;
 use App\Http\Controllers\Api\MarketplaceController;
+use App\Http\Controllers\Api\RuntimeActionController;
 use App\Http\Controllers\Api\WorldController;
 use App\Http\Controllers\Api\XentozSessionController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/aivvas/{aivva}', [AivvaController::class, 'show']);
     Route::get('/runtime/aivvas/{aivva}', [AivvaRuntimeController::class, 'show']);
     Route::patch('/runtime/aivvas/{aivva}/control-mode', [AivvaRuntimeController::class, 'controlMode']);
+    Route::get('/runtime/aivvas/{aivva}/actions/active', [RuntimeActionController::class, 'active']);
+    Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/claim', [RuntimeActionController::class, 'claim']);
+    Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/status', [RuntimeActionController::class, 'status']);
+    Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/cancel', [RuntimeActionController::class, 'cancel']);
     Route::post('/aivvas/{aivva}/activate', [AivvaController::class, 'activate']);
     Route::post('/aivvas/{aivva}/pause', [AivvaController::class, 'pause']);
     Route::post('/aivvas/{aivva}/recall', [AivvaController::class, 'recall']);

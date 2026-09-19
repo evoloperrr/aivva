@@ -5,6 +5,8 @@ namespace App\Domain\Agent;
 use App\Domain\Chat\PeerConversationService;
 use App\Domain\Marketplace\NegotiationEngine;
 use App\Domain\World\MovementService;
+use App\Domain\Runtime\BrainRuntimeActionAdapter;
+use App\Enums\RuntimeActionStatus;
 use App\Enums\ActionStatus;
 use App\Enums\ActionType;
 use App\Enums\AivvaStatus;
@@ -24,6 +26,7 @@ class AgentRuntime
         private readonly MovementService $movement,
         private readonly PeerConversationService $conversations,
         private readonly NegotiationEngine $negotiations,
+        private readonly BrainRuntimeActionAdapter $runtimeActions,
     ) {}
 
     /**
@@ -40,6 +43,11 @@ class AgentRuntime
         }
         if ($aivva->status === AivvaStatus::Dormant) {
             return ['ok' => false, 'reason' => 'AIVVA is dormant.', 'aivva_id' => $aivva->id];
+        }
+
+        $activeRuntime = $aivva->runtimeActions()->whereIn('status', [RuntimeActionStatus::Requested, RuntimeActionStatus::Executing])->oldest()->first();
+        if ($activeRuntime) {
+            return ['ok' => true, 'waiting' => 'runtime_action', 'runtime_action_id' => $activeRuntime->id, 'aivva_id' => $aivva->id];
         }
 
         $pending = $this->conversations->pendingFor($aivva);
@@ -186,6 +194,12 @@ class AgentRuntime
             }
 
             return ['ok' => false, 'reason' => $decision['reason'], 'needs_approval' => $decision['needs_approval'], 'aivva_id' => $aivva->id];
+        }
+
+        if ($runtime = $this->runtimeActions->dispatch($aivva, $action)) {
+            $aivva->next_scheduled_at = now()->addSeconds((int) config('aivva.ue.action_ttl_seconds', 120));
+            $aivva->save();
+            return ['ok' => true, 'waiting' => 'runtime_action', 'runtime_action_id' => $runtime->id, 'aivva_id' => $aivva->id];
         }
 
         $action->status = ActionStatus::Running;
