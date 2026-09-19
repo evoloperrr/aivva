@@ -21,6 +21,8 @@ Route::middleware('throttle:10,1')->group(function () {
 
 Route::post('/integrations/xentoz/session', [XentozSessionController::class, 'store'])
     ->middleware(['xentoz.assertion', 'throttle:30,1']);
+Route::post('/integrations/xentoz/aivva', [XentozSessionController::class, 'provision'])
+    ->middleware(['xentoz.assertion', 'throttle:10,1']);
 
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

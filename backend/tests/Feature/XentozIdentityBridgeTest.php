@@ -59,6 +59,31 @@ class XentozIdentityBridgeTest extends TestCase
         $this->assertSame(1, XentozIdentityLink::query()->count());
     }
 
+    public function test_signed_provisioning_creates_one_owner_bound_aivva_and_is_idempotent(): void
+    {
+        $this->seedCivilization();
+        User::factory()->create(['email' => 'owner@xentoz.test']);
+        $payload = array_merge($this->payload(), ['displayName' => 'Tython']);
+
+        $first = $this->signedRequest($payload, 'provision-first-nonce', null, '/api/integrations/xentoz/aivva');
+        $first->assertCreated()
+            ->assertJsonPath('created', true)
+            ->assertJsonPath('aivva.displayName', 'Tython')
+            ->assertJsonPath('aivva.controlMode', 'HUMAN');
+
+        $second = $this->signedRequest($payload, 'provision-second-nonce', null, '/api/integrations/xentoz/aivva');
+        $second->assertOk()->assertJsonPath('created', false);
+        $this->assertSame($first->json('aivva.id'), $second->json('aivva.id'));
+        $this->assertSame(1, User::query()->where('email', 'owner@xentoz.test')->firstOrFail()->aivvas()->count());
+        $this->assertSame(1, XentozIdentityLink::query()->count());
+    }
+
+    public function test_provisioning_requires_a_valid_signed_assertion(): void
+    {
+        $this->postJson('/api/integrations/xentoz/aivva', array_merge($this->payload(), ['displayName' => 'Tython']))
+            ->assertUnauthorized();
+    }
+
     public function test_replayed_assertion_is_rejected(): void
     {
         User::factory()->create(['email' => 'owner@xentoz.test']);
@@ -91,13 +116,13 @@ class XentozIdentityBridgeTest extends TestCase
     }
 
     /** @param array<string, mixed> $payload */
-    private function signedRequest(array $payload, string $nonce, ?string $timestamp = null): TestResponse
+    private function signedRequest(array $payload, string $nonce, ?string $timestamp = null, string $path = '/api/integrations/xentoz/session'): TestResponse
     {
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
         $timestamp ??= (string) now()->timestamp;
         $signature = hash_hmac('sha256', $timestamp.'.'.$nonce.'.'.$body, self::SECRET);
 
-        return $this->call('POST', '/api/integrations/xentoz/session', [], [], [], [
+        return $this->call('POST', $path, [], [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_X_XENTOZ_TIMESTAMP' => $timestamp,
             'HTTP_X_XENTOZ_NONCE' => $nonce,

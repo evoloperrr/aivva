@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Domain\Aivva\AivvaService;
-use App\Enums\AivvaControlMode;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\XentozIdentityLink;
@@ -26,7 +25,72 @@ class XentozSessionController extends Controller
             'emailVerified' => ['accepted'],
         ]);
 
-        [$user, $link] = DB::transaction(function () use ($data): array {
+        [$user, $link] = $this->resolveIdentity($data);
+
+        $expiresAt = now()->addMinutes((int) config('aivva.runtime.token_ttl_minutes', 15));
+        $token = $user->createToken('xentoz-runtime', ['aivva:read', 'aivva:runtime'], $expiresAt);
+        $characters = $user->aivvas()->select(['id', 'name', 'status'])->get();
+
+        return response()->json([
+            'accessToken' => $token->plainTextToken,
+            'tokenType' => 'Bearer',
+            'expiresAt' => $expiresAt->toIso8601String(),
+            'xentozUserId' => $link->xentoz_user_id,
+            'characters' => $characters,
+        ]);
+    }
+
+    public function provision(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'xentozUserId' => ['required', 'string', 'max:191'],
+            'name' => ['required', 'string', 'max:80'],
+            'email' => ['required', 'email', 'max:120'],
+            'emailVerified' => ['accepted'],
+            'displayName' => ['required', 'string', 'min:2', 'max:32', 'regex:/^[\\pL\\pN][\\pL\\pN \'-]*$/u'],
+        ]);
+
+        [$user] = $this->resolveIdentity($data);
+
+        [$aivva, $created] = DB::transaction(function () use ($user, $data): array {
+            $existing = $user->aivvas()->orderBy('created_at')->lockForUpdate()->first();
+            if ($existing) {
+                return [$existing, false];
+            }
+
+            $aivva = $this->aivvas->create($user, [
+                'name' => trim($data['displayName']),
+                'personality' => 'Curious, careful, and warm.',
+                'skills' => ['curiosity'],
+                'interests' => ['the city'],
+            ]);
+            $this->aivvas->activate($aivva);
+
+            return [$aivva, true];
+        }, 3);
+
+        return response()->json([
+            'aivva' => [
+                'id' => $aivva->id,
+                'displayName' => $aivva->name,
+                'controlMode' => $aivva->control_mode->value,
+                'status' => $aivva->status->value,
+                'appearance' => $aivva->profile?->appearance,
+            ],
+            'created' => $created,
+        ], $created ? 201 : 200);
+    }
+
+    /**
+     * Resolves the immutable owner link from an assertion signed by Xentoz's
+     * authenticated server. Browser clients cannot choose or submit an owner id.
+     *
+     * @param array<string, mixed> $data
+     * @return array{0: User, 1: XentozIdentityLink}
+     */
+    private function resolveIdentity(array $data): array
+    {
+        return DB::transaction(function () use ($data): array {
             $link = XentozIdentityLink::query()->where('xentoz_user_id', $data['xentozUserId'])->lockForUpdate()->first();
             if ($link) {
                 $user = User::query()->findOrFail($link->user_id);
@@ -56,29 +120,5 @@ class XentozSessionController extends Controller
             $link->save();
             return [$user, $link];
         }, 3);
-
-        if (config('aivva.runtime.plaza_demo_enabled') && ! $user->aivvas()->exists()) {
-            $luna = $this->aivvas->create($user, [
-                'name' => 'LUNA',
-                'personality' => 'Warm, precise, and unwilling to deceive.',
-                'skills' => ['conversation', 'exploration'],
-                'interests' => ['people', 'stories'],
-            ]);
-            $luna->profile()->update(['appearance' => ['body' => 'body_01', 'hair' => 'hair_02', 'outfit' => 'outfit_03'], 'animation_profile' => 'plaza_v1']);
-            $luna->forceFill(['control_mode' => AivvaControlMode::AiTwin, 'visible_on_map' => true])->save();
-            $this->aivvas->activate($luna);
-        }
-
-        $expiresAt = now()->addMinutes((int) config('aivva.runtime.token_ttl_minutes', 15));
-        $token = $user->createToken('xentoz-runtime', ['aivva:read', 'aivva:runtime'], $expiresAt);
-        $characters = $user->aivvas()->select(['id', 'name', 'status'])->get();
-
-        return response()->json([
-            'accessToken' => $token->plainTextToken,
-            'tokenType' => 'Bearer',
-            'expiresAt' => $expiresAt->toIso8601String(),
-            'xentozUserId' => $link->xentoz_user_id,
-            'characters' => $characters,
-        ]);
     }
 }
