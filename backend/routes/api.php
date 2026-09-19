@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DirectionController;
 use App\Http\Controllers\Api\MarketplaceController;
 use App\Http\Controllers\Api\WorldController;
+use App\Http\Controllers\Api\XentozSessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => ['ok' => true, 'name' => 'AIVVA']);
@@ -15,6 +16,9 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 });
+
+Route::post('/integrations/xentoz/session', [XentozSessionController::class, 'store'])
+    ->middleware(['xentoz.assertion', 'throttle:30,1']);
 
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

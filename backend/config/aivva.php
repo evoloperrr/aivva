@@ -1,6 +1,16 @@
 <?php
 
 return [
+    'ue' => [
+        'enabled' => filter_var(env('AIVVA_UE_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'ai_control_enabled' => filter_var(env('AIVVA_UE_AI_CONTROL_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'social_enabled' => filter_var(env('AIVVA_UE_SOCIAL_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'wallet_enabled' => filter_var(env('AIVVA_UE_WALLET_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'integration_secret' => env('XENTOZ_AIVVA_INTEGRATION_SECRET', ''),
+        'assertion_ttl_seconds' => (int) env('XENTOZ_AIVVA_ASSERTION_TTL_SECONDS', 300),
+        'token_ttl_minutes' => (int) env('AIVVA_UE_TOKEN_TTL_MINUTES', 15),
+    ],
+
     'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),
 
     'starter_credits' => (int) env('STARTER_CREDITS', 100),
