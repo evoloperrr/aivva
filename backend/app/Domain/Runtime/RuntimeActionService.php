@@ -13,7 +13,7 @@ class RuntimeActionService
     {
         $this->validatePayload($aivva, $type, $payload);
         if ($initiatedBy === 'AI') {
-            abort_unless(config('aivva.ue.ai_control_enabled') && $aivva->control_mode === AivvaControlMode::AiTwin, 409, 'AI Twin does not control this AIVVA.');
+            abort_unless(config('aivva.runtime.ai_control_enabled') && $aivva->control_mode === AivvaControlMode::AiTwin, 409, 'AI Twin does not control this AIVVA.');
         }
         if ($sourceActionId && $existing = AivvaRuntimeAction::query()->where('source_action_id', $sourceActionId)->first()) {
             return $existing;
@@ -22,7 +22,7 @@ class RuntimeActionService
             'aivva_id' => $aivva->id, 'source_action_id' => $sourceActionId, 'type' => $type,
             'payload' => $payload, 'status' => RuntimeActionStatus::Requested,
             'correlation_id' => (string) Str::uuid(), 'initiated_by' => $initiatedBy,
-            'expires_at' => now()->addSeconds((int) config('aivva.ue.action_ttl_seconds', 120)),
+            'expires_at' => now()->addSeconds((int) config('aivva.runtime.action_ttl_seconds', 120)),
         ]);
         $this->log($action, RuntimeActionStatus::Requested->value);
         return $action;
@@ -56,7 +56,7 @@ class RuntimeActionService
             $action->forceFill(['status' => RuntimeActionStatus::Executing, 'execution_id' => $executionId,
                 'client_instance_id' => $clientInstanceId, 'claimed_at' => now(),
                 'started_at' => $action->started_at ?? now(),
-                'lease_expires_at' => now()->addSeconds((int) config('aivva.ue.action_lease_seconds', 30)),
+                'lease_expires_at' => now()->addSeconds((int) config('aivva.runtime.action_lease_seconds', 30)),
                 'version' => $action->version + 1])->save();
             $action->sourceAction?->forceFill(['status' => ActionStatus::Running])->save();
             $action->aivva()->update(['status' => $action->type === RuntimeActionType::MoveTo ? AivvaStatus::Traveling : AivvaStatus::Working]);

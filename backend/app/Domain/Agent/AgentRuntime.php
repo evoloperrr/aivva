@@ -197,7 +197,7 @@ class AgentRuntime
         }
 
         if ($runtime = $this->runtimeActions->dispatch($aivva, $action)) {
-            $aivva->next_scheduled_at = now()->addSeconds((int) config('aivva.ue.action_ttl_seconds', 120));
+            $aivva->next_scheduled_at = now()->addSeconds((int) config('aivva.runtime.action_ttl_seconds', 120));
             $aivva->save();
             return ['ok' => true, 'waiting' => 'runtime_action', 'runtime_action_id' => $runtime->id, 'aivva_id' => $aivva->id];
         }

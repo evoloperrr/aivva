@@ -16,8 +16,8 @@ class AivvaRuntimeApiTest extends TestCase
     {
         parent::setUp();
         $this->seedCivilization();
-        config()->set('aivva.ue.enabled', true);
-        config()->set('aivva.ue.ai_control_enabled', false);
+        config()->set('aivva.runtime.enabled', true);
+        config()->set('aivva.runtime.ai_control_enabled', false);
         config()->set('aivva.ue.wallet_enabled', false);
     }
 
@@ -45,7 +45,7 @@ class AivvaRuntimeApiTest extends TestCase
         Sanctum::actingAs($owner, ['aivva:runtime']);
 
         $this->patchJson('/api/runtime/aivvas/'.$aivva->id.'/control-mode', ['controlMode' => 'AI_TWIN'])->assertStatus(503);
-        config()->set('aivva.ue.ai_control_enabled', true);
+        config()->set('aivva.runtime.ai_control_enabled', true);
         $response = $this->patchJson('/api/runtime/aivvas/'.$aivva->id.'/control-mode', ['controlMode' => 'AI_TWIN']);
         $response->assertOk()->assertJsonPath('data.id', $aivva->id)->assertJsonPath('data.controlMode', 'AI_TWIN');
         $this->assertDatabaseHas('aivvas', ['id' => $aivva->id, 'control_mode' => 'AI_TWIN']);
@@ -60,6 +60,20 @@ class AivvaRuntimeApiTest extends TestCase
         $this->getJson('/api/runtime/aivvas/'.$aivva->id)->assertForbidden();
         Sanctum::actingAs($owner, ['aivva:read']);
         $this->getJson('/api/runtime/aivvas/'.$aivva->id)->assertForbidden();
+    }
+
+    public function test_scene_registry_exposes_only_owned_or_platform_visible_aivvas(): void
+    {
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $hiddenOwner = User::factory()->create();
+        $this->makeLivingAivva($hiddenOwner, ['name' => 'HIDDEN', 'visible_on_map' => false]);
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+        $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
+        $names = collect($response->json('data.characters'))->pluck('displayName');
+        $this->assertTrue($names->contains('LUNA'));
+        $this->assertTrue($names->contains('NOVA'));
+        $this->assertFalse($names->contains('HIDDEN'));
     }
 
     private function link(User $user, string $xentozUserId): void

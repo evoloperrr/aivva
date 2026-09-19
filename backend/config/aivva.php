@@ -1,6 +1,17 @@
 <?php
 
 return [
+    'runtime' => [
+        'enabled' => filter_var(env('AIVVA_RUNTIME_ENABLED', env('AIVVA_UE_ENABLED', false)), FILTER_VALIDATE_BOOL),
+        'ai_control_enabled' => filter_var(env('AIVVA_RUNTIME_AI_CONTROL_ENABLED', env('AIVVA_UE_AI_CONTROL_ENABLED', false)), FILTER_VALIDATE_BOOL),
+        'action_ttl_seconds' => (int) env('AIVVA_RUNTIME_ACTION_TTL_SECONDS', env('AIVVA_UE_ACTION_TTL_SECONDS', 120)),
+        'action_lease_seconds' => (int) env('AIVVA_RUNTIME_ACTION_LEASE_SECONDS', env('AIVVA_UE_ACTION_LEASE_SECONDS', 30)),
+        'event_stream_seconds' => (int) env('AIVVA_RUNTIME_EVENT_STREAM_SECONDS', 25),
+        'token_ttl_minutes' => (int) env('AIVVA_RUNTIME_TOKEN_TTL_MINUTES', env('AIVVA_UE_TOKEN_TTL_MINUTES', 15)),
+        'integration_secret' => env('XENTOZ_AIVVA_INTEGRATION_SECRET', ''),
+        'assertion_ttl_seconds' => (int) env('XENTOZ_AIVVA_ASSERTION_TTL_SECONDS', 300),
+    ],
+
     'ue' => [
         'enabled' => filter_var(env('AIVVA_UE_ENABLED', false), FILTER_VALIDATE_BOOL),
         'ai_control_enabled' => filter_var(env('AIVVA_UE_AI_CONTROL_ENABLED', false), FILTER_VALIDATE_BOOL),

@@ -17,15 +17,15 @@ class XentozIdentityBridgeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config()->set('aivva.ue.enabled', true);
-        config()->set('aivva.ue.integration_secret', self::SECRET);
-        config()->set('aivva.ue.assertion_ttl_seconds', 300);
-        config()->set('aivva.ue.token_ttl_minutes', 15);
+        config()->set('aivva.runtime.enabled', true);
+        config()->set('aivva.runtime.integration_secret', self::SECRET);
+        config()->set('aivva.runtime.assertion_ttl_seconds', 300);
+        config()->set('aivva.runtime.token_ttl_minutes', 15);
     }
 
     public function test_bridge_is_unavailable_when_feature_is_disabled(): void
     {
-        config()->set('aivva.ue.enabled', false);
+        config()->set('aivva.runtime.enabled', false);
         $this->signedRequest($this->payload(), 'disabled-feature-nonce')->assertStatus(503);
     }
 

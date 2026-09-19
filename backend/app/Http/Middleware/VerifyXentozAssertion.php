@@ -12,11 +12,11 @@ class VerifyXentozAssertion
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! config('aivva.ue.enabled')) {
+        if (! config('aivva.runtime.enabled')) {
             return new JsonResponse(['message' => 'Xentoz AIVVA integration is disabled.'], 503);
         }
 
-        $secret = (string) config('aivva.ue.integration_secret');
+        $secret = (string) config('aivva.runtime.integration_secret');
         $timestamp = (string) $request->header('X-Xentoz-Timestamp', '');
         $nonce = (string) $request->header('X-Xentoz-Nonce', '');
         $signature = strtolower((string) $request->header('X-Xentoz-Signature', ''));
@@ -26,7 +26,7 @@ class VerifyXentozAssertion
         }
 
         $now = now();
-        if (abs($now->timestamp - (int) $timestamp) > (int) config('aivva.ue.assertion_ttl_seconds', 300)) {
+        if (abs($now->timestamp - (int) $timestamp) > (int) config('aivva.runtime.assertion_ttl_seconds', 300)) {
             return new JsonResponse(['message' => 'Expired Xentoz assertion.'], 401);
         }
 
@@ -38,7 +38,7 @@ class VerifyXentozAssertion
         DB::table('xentoz_integration_nonces')->where('expires_at', '<', $now)->delete();
         $inserted = DB::table('xentoz_integration_nonces')->insertOrIgnore([
             'nonce' => $nonce,
-            'expires_at' => $now->copy()->addSeconds((int) config('aivva.ue.assertion_ttl_seconds', 300)),
+            'expires_at' => $now->copy()->addSeconds((int) config('aivva.runtime.assertion_ttl_seconds', 300)),
             'created_at' => $now,
         ]);
         if ($inserted !== 1) {

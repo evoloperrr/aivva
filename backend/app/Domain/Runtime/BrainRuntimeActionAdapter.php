@@ -7,7 +7,7 @@ use App\Models\{Aivva,AivvaAction,AivvaRuntimeAction,AivvaRuntimeLocation};
 class BrainRuntimeActionAdapter
 {
     public function __construct(private readonly RuntimeActionService $runtime) {}
-    public function shouldDispatch(Aivva $aivva,AivvaAction $action):bool{return (bool)config('aivva.ue.enabled')&&(bool)config('aivva.ue.ai_control_enabled')&&$aivva->control_mode===AivvaControlMode::AiTwin&&in_array($action->type,[ActionType::Travel,ActionType::Contact,ActionType::SendMessage],true);}
+    public function shouldDispatch(Aivva $aivva,AivvaAction $action):bool{return (bool)config('aivva.runtime.enabled')&&(bool)config('aivva.runtime.ai_control_enabled')&&$aivva->control_mode===AivvaControlMode::AiTwin&&in_array($action->type,[ActionType::Travel,ActionType::Contact,ActionType::SendMessage],true);}
     public function dispatch(Aivva $aivva,AivvaAction $action):?AivvaRuntimeAction
     {
         if(!$this->shouldDispatch($aivva,$action))return null;

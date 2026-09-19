@@ -53,8 +53,8 @@ class XentozSessionController extends Controller
             return [$user, $link];
         }, 3);
 
-        $expiresAt = now()->addMinutes((int) config('aivva.ue.token_ttl_minutes', 15));
-        $token = $user->createToken('xentoz-unreal', ['aivva:read', 'aivva:runtime'], $expiresAt);
+        $expiresAt = now()->addMinutes((int) config('aivva.runtime.token_ttl_minutes', 15));
+        $token = $user->createToken('xentoz-runtime', ['aivva:read', 'aivva:runtime'], $expiresAt);
         $characters = $user->aivvas()->select(['id', 'name', 'status'])->get();
 
         return response()->json([

@@ -40,7 +40,7 @@ class AivvaRuntimeController extends Controller
     {
         $this->authorizeRuntime($request, $aivva);
         $data = $request->validate(['controlMode' => ['required', 'in:HUMAN,AI_TWIN']]);
-        if ($data['controlMode'] === AivvaControlMode::AiTwin->value && ! config('aivva.ue.ai_control_enabled')) {
+        if ($data['controlMode'] === AivvaControlMode::AiTwin->value && ! config('aivva.runtime.ai_control_enabled')) {
             return response()->json(['message' => 'AI Twin control is disabled.'], 503);
         }
         $aivva->control_mode = AivvaControlMode::from($data['controlMode']);
@@ -49,9 +49,25 @@ class AivvaRuntimeController extends Controller
         return response()->json(['data' => ['id' => $aivva->id, 'controlMode' => $aivva->control_mode->value, 'version' => $aivva->state_version]]);
     }
 
+    public function scene(Request $request, Aivva $aivva): JsonResponse
+    {
+        $this->authorizeRuntime($request, $aivva);
+        $characters = Aivva::query()->with('profile')->where('visible_on_map', true)
+            ->where(fn ($query) => $query->whereKey($aivva->id)->orWhere('is_platform', true))
+            ->limit(12)->get()->map(fn (Aivva $character) => [
+                'id' => $character->id,
+                'displayName' => $character->name,
+                'controlMode' => $character->control_mode->value,
+                'appearance' => $character->profile?->appearance ?? [],
+                'state' => $character->status->value,
+                'version' => $character->state_version,
+            ])->values();
+        return response()->json(['data' => ['characters' => $characters]]);
+    }
+
     private function authorizeRuntime(Request $request, Aivva $aivva): void
     {
-        abort_unless(config('aivva.ue.enabled'), 503, 'AIVVA Unreal integration is disabled.');
+        abort_unless(config('aivva.runtime.enabled'), 503, 'AIVVA runtime is disabled.');
         abort_unless($request->user()?->tokenCan('aivva:runtime'), 403, 'Runtime scope required.');
         abort_unless($aivva->owner_id === $request->user()?->id, 403, 'Not your AIVVA.');
     }
