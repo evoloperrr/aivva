@@ -84,8 +84,13 @@ class AivvaRuntimeApiTest extends TestCase
         Sanctum::actingAs($owner, ['aivva:runtime']);
         $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
         $names = collect($response->json('data.characters'))->pluck('displayName');
-        $this->assertSame(['LUNA'], $names->values()->all());
-        $this->assertFalse($names->contains('NOVA'));
+        // NOVA is a platform NPC, not another user's AIVVA -- it's exempt
+        // from consent everywhere else (requestMeetup, validatePayload,
+        // createMeetup) and the canonical scripted Plaza demo depends on
+        // being able to see and FACE_TARGET/INTERACT with it without a
+        // meetup, so the scene always includes it too.
+        $this->assertTrue($names->contains('NOVA'));
+        $this->assertTrue($names->contains('LUNA'));
         $this->assertFalse($names->contains('STRANGER'));
         $this->assertFalse($names->contains('HIDDEN'));
     }
@@ -107,8 +112,9 @@ class AivvaRuntimeApiTest extends TestCase
 
         Sanctum::actingAs($owner, ['aivva:runtime']);
         $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
-        $names = collect($response->json('data.characters'))->pluck('displayName')->sort()->values();
-        $this->assertSame(['LUNA', 'PARTNER'], $names->all());
+        $names = collect($response->json('data.characters'))->pluck('displayName');
+        $this->assertTrue($names->contains('LUNA'));
+        $this->assertTrue($names->contains('PARTNER'));
         $this->assertFalse($names->contains('UNRELATED'));
     }
 
@@ -128,7 +134,8 @@ class AivvaRuntimeApiTest extends TestCase
         Sanctum::actingAs($owner, ['aivva:runtime']);
         $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
         $names = collect($response->json('data.characters'))->pluck('displayName');
-        $this->assertSame(['LUNA'], $names->values()->all());
+        $this->assertTrue($names->contains('LUNA'));
+        $this->assertFalse($names->contains('PARTNER'));
     }
 
     public function test_a_human_can_request_face_target_and_interact_against_an_accepted_meetup_partner(): void

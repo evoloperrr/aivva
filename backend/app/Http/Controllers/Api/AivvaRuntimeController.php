@@ -59,7 +59,14 @@ class AivvaRuntimeController extends Controller
             ->where(fn ($query) => $query->where('from_aivva_id', $aivva->id)->orWhere('to_aivva_id', $aivva->id))
             ->get()->flatMap(fn (AivvaMeetupRequest $meetup) => [$meetup->from_aivva_id, $meetup->to_aivva_id])->unique()->values();
         if ($participantIds->isEmpty()) $participantIds->push($aivva->id);
-        $characters = Aivva::query()->with('profile')->whereIn('id', $participantIds)
+        // Platform NPCs (e.g. NOVA, used by the canonical scripted Plaza
+        // demo) are exempt from the consent requirement everywhere else
+        // (requestMeetup, RuntimeActionService::validatePayload,
+        // AivvaService::createMeetup) -- they're system characters, not
+        // other users, so the private-Plaza rule was never meant to hide
+        // them too.
+        $platformIds = Aivva::query()->where('is_platform', true)->pluck('id');
+        $characters = Aivva::query()->with('profile')->whereIn('id', $participantIds->merge($platformIds)->unique())
             ->limit(12)->get()->map(fn (Aivva $character) => [
                 'id' => $character->id,
                 'displayName' => $character->name,
