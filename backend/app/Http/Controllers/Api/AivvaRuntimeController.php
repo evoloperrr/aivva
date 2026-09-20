@@ -53,7 +53,7 @@ class AivvaRuntimeController extends Controller
     {
         $this->authorizeRuntime($request, $aivva);
         $characters = Aivva::query()->with('profile')->where('visible_on_map', true)
-            ->where(fn ($query) => $query->whereKey($aivva->id)->orWhere('is_platform', true))
+            ->where('is_platform', false)
             ->limit(12)->get()->map(fn (Aivva $character) => [
                 'id' => $character->id,
                 'displayName' => $character->name,

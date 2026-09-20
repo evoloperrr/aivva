@@ -85,6 +85,7 @@ class RuntimeActionService
 
         if ($status === RuntimeActionStatus::Completed) {
             $this->continuePlazaDemo($completed);
+            $this->continueOwnerAction($completed);
         }
 
         return $completed;
@@ -167,6 +168,13 @@ class RuntimeActionService
             default => null,
         };
         if ($next) $this->create($completed->aivva, $next[0], $next[1], 'AI_PLAZA_DEMO');
+    }
+
+    private function continueOwnerAction(AivvaRuntimeAction $completed): void
+    {
+        if ($completed->initiated_by !== 'HUMAN' || $completed->type !== RuntimeActionType::MoveTo) return;
+        if ($completed->aivva->runtimeActions()->whereIn('status', [RuntimeActionStatus::Requested, RuntimeActionStatus::Executing])->exists()) return;
+        $this->create($completed->aivva, RuntimeActionType::Say, ['text' => 'I have arrived at the social area.'], 'HUMAN');
     }
 
     private function validatePayload(Aivva $aivva, RuntimeActionType $type, array $payload): void
