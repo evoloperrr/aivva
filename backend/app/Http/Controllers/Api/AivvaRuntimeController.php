@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\AivvaControlMode;
 use App\Http\Controllers\Controller;
 use App\Models\Aivva;
+use App\Models\AivvaMeetupRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -52,7 +53,12 @@ class AivvaRuntimeController extends Controller
     public function scene(Request $request, Aivva $aivva): JsonResponse
     {
         $this->authorizeRuntime($request, $aivva);
-        $characters = Aivva::query()->with('profile')->whereKey($aivva->id)
+        $participantIds = AivvaMeetupRequest::query()->where('status', AivvaMeetupRequest::ACCEPTED)
+            ->where('expires_at', '>', now())
+            ->where(fn ($query) => $query->where('from_aivva_id', $aivva->id)->orWhere('to_aivva_id', $aivva->id))
+            ->get()->flatMap(fn (AivvaMeetupRequest $meetup) => [$meetup->from_aivva_id, $meetup->to_aivva_id])->unique()->values();
+        if ($participantIds->isEmpty()) $participantIds->push($aivva->id);
+        $characters = Aivva::query()->with('profile')->whereIn('id', $participantIds)
             ->limit(12)->get()->map(fn (Aivva $character) => [
                 'id' => $character->id,
                 'displayName' => $character->name,
