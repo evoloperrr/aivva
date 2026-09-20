@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Domain\Runtime\RuntimeActionService;
 use App\Enums\RuntimeActionStatus;
+use App\Enums\RuntimeActionType;
 use App\Http\Controllers\Controller;
 use App\Models\{Aivva,AivvaRuntimeAction};
 use Illuminate\Http\{JsonResponse,Request};
@@ -15,6 +16,7 @@ class RuntimeActionController extends Controller
     public function health(Request $r):JsonResponse{abort_unless(config('aivva.runtime.enabled'),503,'AIVVA runtime is disabled.');abort_unless($r->user()?->tokenCan('aivva:runtime'),403,'Runtime scope required.');DB::select('select 1');return response()->json(['ok'=>true,'runtime'=>'enabled','authentication'=>'scoped-token','eventStreamSeconds'=>(int)config('aivva.runtime.event_stream_seconds',25),'serverTime'=>now()->toIso8601String()]);}
     public function active(Request $r,Aivva $aivva):JsonResponse{$this->authorizeRuntime($r,$aivva);return response()->json(['data'=>$this->serialize($this->actions->active($aivva))]);}
     public function startDemo(Request $r,Aivva $aivva):JsonResponse{$this->authorizeRuntime($r,$aivva);return response()->json(['data'=>$this->serialize($this->actions->startPlazaDemo($aivva))],201);}
+    public function request(Request $r,Aivva $aivva):JsonResponse{$this->authorizeRuntime($r,$aivva);$d=$r->validate(['type'=>['required','in:MOVE_TO,SAY'],'payload'=>['required','array']]);abort_if($this->actions->active($aivva),409,'Finish or cancel the active action first.');$action=$this->actions->create($aivva,RuntimeActionType::from($d['type']),$d['payload'],'HUMAN');return response()->json(['data'=>$this->serialize($action)],201);}
     public function trace(Request $r,Aivva $aivva,AivvaRuntimeAction $runtimeAction):JsonResponse{$this->authorizeAction($r,$aivva,$runtimeAction);return response()->json(['data'=>$this->serialize($runtimeAction->fresh())]);}
     public function claim(Request $r,Aivva $aivva,AivvaRuntimeAction $runtimeAction):JsonResponse{$this->authorizeAction($r,$aivva,$runtimeAction);$d=$r->validate(['executionId'=>['required','string','max:100'],'clientInstanceId'=>['required','string','max:100']]);return response()->json(['data'=>$this->serialize($this->actions->claim($runtimeAction,$d['executionId'],$d['clientInstanceId']))]);}
     public function status(Request $r,Aivva $aivva,AivvaRuntimeAction $runtimeAction):JsonResponse{$this->authorizeAction($r,$aivva,$runtimeAction);$d=$r->validate(['executionId'=>['required','string','max:100'],'status'=>['required','in:COMPLETED,FAILED,CANCELLED'],'failureCode'=>['nullable','string','max:80'],'result'=>['nullable','array']]);return response()->json(['data'=>$this->serialize($this->actions->acknowledge($runtimeAction,$d['executionId'],RuntimeActionStatus::from($d['status']),$d['result']??[],$d['failureCode']??null))]);}

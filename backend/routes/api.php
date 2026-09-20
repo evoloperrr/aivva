@@ -38,6 +38,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/runtime/aivvas/{aivva}/actions/active', [RuntimeActionController::class, 'active']);
     Route::get('/runtime/aivvas/{aivva}/actions/events', [RuntimeActionController::class, 'events']);
     Route::post('/runtime/aivvas/{aivva}/demo/start', [RuntimeActionController::class, 'startDemo']);
+    Route::post('/runtime/aivvas/{aivva}/actions/request', [RuntimeActionController::class, 'request']);
     Route::get('/runtime/aivvas/{aivva}/actions/{runtimeAction}/trace', [RuntimeActionController::class, 'trace']);
     Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/claim', [RuntimeActionController::class, 'claim']);
     Route::post('/runtime/aivvas/{aivva}/actions/{runtimeAction}/status', [RuntimeActionController::class, 'status']);
