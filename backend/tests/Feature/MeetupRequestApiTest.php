@@ -174,6 +174,57 @@ class MeetupRequestApiTest extends TestCase
         $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups/{$meetupId}/cancel")->assertStatus(409);
     }
 
+    public function test_either_party_can_revoke_an_accepted_meetup(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $targetOwner = User::factory()->create();
+        $target = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $created = $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+        $meetupId = $created->json('data.id');
+
+        Sanctum::actingAs($targetOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$target->id}/meetups/{$meetupId}/respond", ['response' => 'ACCEPT'])->assertOk();
+
+        // Unlike a PENDING request, an ACCEPTED one can be revoked by
+        // either side, not just whoever originally sent the request.
+        $revoked = $this->postJson("/api/runtime/aivvas/{$target->id}/meetups/{$meetupId}/cancel")->assertOk();
+        $revoked->assertJsonPath('data.status', AivvaMeetupRequest::CANCELLED);
+    }
+
+    public function test_the_requester_can_also_revoke_an_accepted_meetup(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $targetOwner = User::factory()->create();
+        $target = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $created = $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+        $meetupId = $created->json('data.id');
+
+        Sanctum::actingAs($targetOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$target->id}/meetups/{$meetupId}/respond", ['response' => 'ACCEPT'])->assertOk();
+
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $revoked = $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups/{$meetupId}/cancel")->assertOk();
+        $revoked->assertJsonPath('data.status', AivvaMeetupRequest::CANCELLED);
+    }
+
+    public function test_a_non_participant_cannot_cancel_someone_elses_meetup(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $target = $this->makeLivingAivva(User::factory()->create(), ['name' => 'MIRA']);
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $created = $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+
+        $bystanderOwner = User::factory()->create();
+        $bystander = $this->makeLivingAivva($bystanderOwner, ['name' => 'ZANE']);
+        Sanctum::actingAs($bystanderOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$bystander->id}/meetups/{$created->json('data.id')}/cancel")->assertForbidden();
+    }
+
     public function test_an_expired_pending_request_cannot_be_accepted_and_is_flipped_to_expired_on_read(): void
     {
         $requesterOwner = User::factory()->create();

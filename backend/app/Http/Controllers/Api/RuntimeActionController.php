@@ -27,7 +27,24 @@ class RuntimeActionController extends Controller
     public function incomingMeetups(Request $r,Aivva $aivva):JsonResponse{$this->authorizeRuntime($r,$aivva);$this->expireMeetups($aivva);return response()->json(['data'=>AivvaMeetupRequest::query()->where('to_aivva_id',$aivva->id)->latest()->get()->map(fn($m)=>$this->meetup($m))->values()]);}
     public function outgoingMeetups(Request $r,Aivva $aivva):JsonResponse{$this->authorizeRuntime($r,$aivva);$this->expireMeetups($aivva);return response()->json(['data'=>AivvaMeetupRequest::query()->where('from_aivva_id',$aivva->id)->latest()->get()->map(fn($m)=>$this->meetup($m))->values()]);}
     public function respondMeetup(Request $r,Aivva $aivva,AivvaMeetupRequest $meetup):JsonResponse{$this->authorizeRuntime($r,$aivva);abort_unless($meetup->to_aivva_id===$aivva->id,403);$d=$r->validate(['response'=>['required','in:ACCEPT,DECLINE']]);$this->expireMeetups($aivva);abort_unless($meetup->status===AivvaMeetupRequest::PENDING,409,'Meetup request is no longer pending.');$meetup->forceFill(['status'=>$d['response']==='ACCEPT'?AivvaMeetupRequest::ACCEPTED:AivvaMeetupRequest::DECLINED,'responded_at'=>now()])->save();return response()->json(['data'=>$this->meetup($meetup)]);}
-    public function cancelMeetup(Request $r,Aivva $aivva,AivvaMeetupRequest $meetup):JsonResponse{$this->authorizeRuntime($r,$aivva);abort_unless($meetup->from_aivva_id===$aivva->id,403);abort_unless($meetup->status===AivvaMeetupRequest::PENDING,409);$meetup->forceFill(['status'=>AivvaMeetupRequest::CANCELLED,'responded_at'=>now()])->save();return response()->json(['data'=>$this->meetup($meetup)]);}
+    // A PENDING request can only be withdrawn by whoever sent it (the
+    // recipient declines instead, via respondMeetup). Once ACCEPTED,
+    // consent is symmetric -- either party can revoke it at any time,
+    // which immediately closes both scene visibility and runtime-action
+    // authorization since both read the same AivvaMeetupRequest::ACCEPTED
+    // row through hasAcceptedBetween().
+    public function cancelMeetup(Request $r,Aivva $aivva,AivvaMeetupRequest $meetup):JsonResponse{
+        $this->authorizeRuntime($r,$aivva);
+        $isParticipant=$meetup->from_aivva_id===$aivva->id||$meetup->to_aivva_id===$aivva->id;
+        abort_unless($isParticipant,403);
+        if($meetup->status===AivvaMeetupRequest::PENDING){
+            abort_unless($meetup->from_aivva_id===$aivva->id,403,'Only the requester can cancel a pending request.');
+        }else{
+            abort_unless($meetup->status===AivvaMeetupRequest::ACCEPTED,409,'Meetup request is no longer pending or accepted.');
+        }
+        $meetup->forceFill(['status'=>AivvaMeetupRequest::CANCELLED,'responded_at'=>now()])->save();
+        return response()->json(['data'=>$this->meetup($meetup)]);
+    }
     public function trace(Request $r,Aivva $aivva,AivvaRuntimeAction $runtimeAction):JsonResponse{$this->authorizeAction($r,$aivva,$runtimeAction);return response()->json(['data'=>$this->serialize($runtimeAction->fresh())]);}
     public function claim(Request $r,Aivva $aivva,AivvaRuntimeAction $runtimeAction):JsonResponse{$this->authorizeAction($r,$aivva,$runtimeAction);$d=$r->validate(['executionId'=>['required','string','max:100'],'clientInstanceId'=>['required','string','max:100']]);return response()->json(['data'=>$this->serialize($this->actions->claim($runtimeAction,$d['executionId'],$d['clientInstanceId']))]);}
     public function status(Request $r,Aivva $aivva,AivvaRuntimeAction $runtimeAction):JsonResponse{$this->authorizeAction($r,$aivva,$runtimeAction);$d=$r->validate(['executionId'=>['required','string','max:100'],'status'=>['required','in:COMPLETED,FAILED,CANCELLED'],'failureCode'=>['nullable','string','max:80'],'result'=>['nullable','array']]);return response()->json(['data'=>$this->serialize($this->actions->acknowledge($runtimeAction,$d['executionId'],RuntimeActionStatus::from($d['status']),$d['result']??[],$d['failureCode']??null))]);}
