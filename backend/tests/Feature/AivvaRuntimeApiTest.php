@@ -131,6 +131,50 @@ class AivvaRuntimeApiTest extends TestCase
         $this->assertSame(['LUNA'], $names->values()->all());
     }
 
+    public function test_a_human_can_request_face_target_and_interact_against_an_accepted_meetup_partner(): void
+    {
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $partnerOwner = User::factory()->create();
+        $partner = $this->makeLivingAivva($partnerOwner, ['name' => 'PARTNER']);
+        AivvaMeetupRequest::query()->create([
+            'from_aivva_id' => $aivva->id, 'to_aivva_id' => $partner->id,
+            'proposed_location_id' => 'test_social_area',
+            'status' => AivvaMeetupRequest::ACCEPTED, 'expires_at' => now()->addMinutes(15),
+        ]);
+
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+        $face = $this->postJson('/api/runtime/aivvas/'.$aivva->id.'/actions/request', [
+            'type' => 'FACE_TARGET', 'payload' => ['targetAivvaId' => $partner->id],
+        ])->assertCreated();
+        $this->assertSame('FACE_TARGET', $face->json('data.type'));
+        $this->assertSame($partner->id, $face->json('data.payload.targetAivvaId'));
+
+        $this->service()->cancel(\App\Models\AivvaRuntimeAction::query()->findOrFail($face->json('data.actionId')));
+
+        $interact = $this->postJson('/api/runtime/aivvas/'.$aivva->id.'/actions/request', [
+            'type' => 'INTERACT', 'payload' => ['targetAivvaId' => $partner->id],
+        ])->assertCreated();
+        $this->assertSame('INTERACT', $interact->json('data.type'));
+    }
+
+    public function test_a_human_cannot_request_interact_against_a_non_consenting_aivva(): void
+    {
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $stranger = $this->makeLivingAivva(User::factory()->create(), ['name' => 'STRANGER']);
+
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+        $this->postJson('/api/runtime/aivvas/'.$aivva->id.'/actions/request', [
+            'type' => 'INTERACT', 'payload' => ['targetAivvaId' => $stranger->id],
+        ])->assertForbidden();
+    }
+
+    private function service(): \App\Domain\Runtime\RuntimeActionService
+    {
+        return app(\App\Domain\Runtime\RuntimeActionService::class);
+    }
+
     public function test_resolves_a_xentoz_user_id_to_their_aivva_for_the_meetup_ui(): void
     {
         $caller = User::factory()->create();
