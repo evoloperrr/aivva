@@ -28,6 +28,14 @@ return [
 
     'frontend_url' => env('FRONTEND_URL', 'http://127.0.0.1:3000'),
 
+    // Where Xentoz itself lives -- distinct from frontend_url above, which
+    // (in production) actually points at AIVVA's own standalone owner app
+    // and is unused by anything today. This is the real Xentoz deployment
+    // that XentozWebhookNotifier calls back into so a meetup request/accept
+    // shows up as a real Xentoz notification, not just a silent DB row the
+    // recipient has no reason to go looking for.
+    'xentoz_webhook_url' => env('XENTOZ_WEBHOOK_BASE_URL', 'http://127.0.0.1:3000'),
+
     'starter_credits' => (int) env('STARTER_CREDITS', 100),
 
     'tick_seconds' => (int) env('AIVVA_TICK_SECONDS', 4),

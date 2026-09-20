@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\AivvaMeetupRequest;
 use App\Models\User;
+use App\Models\XentozIdentityLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -23,6 +25,17 @@ class MeetupRequestApiTest extends TestCase
         parent::setUp();
         $this->seedCivilization();
         config()->set('aivva.runtime.enabled', true);
+        config()->set('aivva.runtime.integration_secret', 'test-integration-secret');
+        config()->set('aivva.xentoz_webhook_url', 'https://xentoz.test');
+        Http::fake();
+    }
+
+    private function linkToXentoz(User $owner, string $xentozUserId): void
+    {
+        XentozIdentityLink::forceCreate([
+            'user_id' => $owner->id, 'xentoz_user_id' => $xentozUserId,
+            'linked_at' => now(), 'last_asserted_at' => now(),
+        ]);
     }
 
     public function test_owner_can_request_a_meetup_with_a_stranger(): void
@@ -244,5 +257,71 @@ class MeetupRequestApiTest extends TestCase
         $this->assertSame(AivvaMeetupRequest::EXPIRED, $incoming->json('data.0.status'));
         // ...so it can no longer be accepted.
         $this->postJson("/api/runtime/aivvas/{$target->id}/meetups/{$meetup->id}/respond", ['response' => 'ACCEPT'])->assertStatus(409);
+    }
+
+    public function test_requesting_a_meetup_notifies_the_target_over_the_reverse_xentoz_webhook(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $targetOwner = User::factory()->create();
+        $target = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+        $this->linkToXentoz($targetOwner, 'xentoz-user-mira');
+
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://xentoz.test/api/aivva/webhooks/meetup-event'
+                && $request['xentozUserId'] === 'xentoz-user-mira'
+                && $request['type'] === 'AIVVA_MEETUP_REQUESTED'
+                && preg_match('/^\d+$/', $request->header('X-Aivva-Timestamp')[0] ?? '')
+                && preg_match('/^[a-f0-9]{64}$/', $request->header('X-Aivva-Signature')[0] ?? '');
+        });
+    }
+
+    public function test_a_meetup_request_is_not_sent_when_the_target_owner_has_no_linked_xentoz_account(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $target = $this->makeLivingAivva(User::factory()->create(), ['name' => 'MIRA']);
+
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+
+        Http::assertNothingSent();
+    }
+
+    public function test_accepting_a_meetup_notifies_the_original_requester(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $this->linkToXentoz($requesterOwner, 'xentoz-user-luna');
+        $targetOwner = User::factory()->create();
+        $target = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $created = $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+
+        Sanctum::actingAs($targetOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$target->id}/meetups/{$created->json('data.id')}/respond", ['response' => 'ACCEPT'])->assertOk();
+
+        Http::assertSent(fn ($request) => $request['xentozUserId'] === 'xentoz-user-luna' && $request['type'] === 'AIVVA_MEETUP_ACCEPTED');
+    }
+
+    public function test_declining_a_meetup_sends_no_notification(): void
+    {
+        $requesterOwner = User::factory()->create();
+        $requester = $this->makeLivingAivva($requesterOwner, ['name' => 'LUNA']);
+        $this->linkToXentoz($requesterOwner, 'xentoz-user-luna');
+        $targetOwner = User::factory()->create();
+        $target = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+
+        Sanctum::actingAs($requesterOwner, ['aivva:runtime']);
+        $created = $this->postJson("/api/runtime/aivvas/{$requester->id}/meetups", ['targetAivvaId' => $target->id, 'locationId' => 'test_social_area'])->assertCreated();
+
+        Sanctum::actingAs($targetOwner, ['aivva:runtime']);
+        $this->postJson("/api/runtime/aivvas/{$target->id}/meetups/{$created->json('data.id')}/respond", ['response' => 'DECLINE'])->assertOk();
+
+        Http::assertNotSent(fn ($request) => ($request['type'] ?? null) === 'AIVVA_MEETUP_ACCEPTED');
     }
 }
