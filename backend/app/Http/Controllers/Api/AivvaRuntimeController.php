@@ -59,13 +59,17 @@ class AivvaRuntimeController extends Controller
             ->where(fn ($query) => $query->where('from_aivva_id', $aivva->id)->orWhere('to_aivva_id', $aivva->id))
             ->get()->flatMap(fn (AivvaMeetupRequest $meetup) => [$meetup->from_aivva_id, $meetup->to_aivva_id])->unique()->values();
         if ($participantIds->isEmpty()) $participantIds->push($aivva->id);
-        // Platform NPCs (e.g. NOVA, used by the canonical scripted Plaza
-        // demo) are exempt from the consent requirement everywhere else
-        // (requestMeetup, RuntimeActionService::validatePayload,
-        // AivvaService::createMeetup) -- they're system characters, not
-        // other users, so the private-Plaza rule was never meant to hide
-        // them too.
-        $platformIds = Aivva::query()->where('is_platform', true)->pluck('id');
+        // Platform NPCs (e.g. NOVA) are exempt from consent everywhere
+        // else, but they should only actually appear in a scene for the
+        // one feature that uses them: the canonical scripted Plaza demo,
+        // which itself is hardcoded to require the owner's own AIVVA to
+        // be named exactly "LUNA" (see RuntimeActionService::
+        // startPlazaDemo's abort_unless). Showing NOVA to every real
+        // AIVVA regardless of name defeated the private-Plaza model for
+        // ordinary users who were never running that demo.
+        $platformIds = $aivva->name === 'LUNA'
+            ? Aivva::query()->where('is_platform', true)->pluck('id')
+            : collect();
         $characters = Aivva::query()->with('profile')->whereIn('id', $participantIds->merge($platformIds)->unique())
             ->limit(12)->get()->map(fn (Aivva $character) => [
                 'id' => $character->id,

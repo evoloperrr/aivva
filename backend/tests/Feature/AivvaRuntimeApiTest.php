@@ -84,15 +84,30 @@ class AivvaRuntimeApiTest extends TestCase
         Sanctum::actingAs($owner, ['aivva:runtime']);
         $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
         $names = collect($response->json('data.characters'))->pluck('displayName');
-        // NOVA is a platform NPC, not another user's AIVVA -- it's exempt
-        // from consent everywhere else (requestMeetup, validatePayload,
-        // createMeetup) and the canonical scripted Plaza demo depends on
-        // being able to see and FACE_TARGET/INTERACT with it without a
-        // meetup, so the scene always includes it too.
+        // NOVA only appears for the one AIVVA literally named "LUNA" --
+        // that's the canonical scripted Plaza demo character (see
+        // RuntimeActionService::startPlazaDemo's abort_unless), the only
+        // feature that ever needs to see or FACE_TARGET/INTERACT with a
+        // platform NPC without a meetup.
         $this->assertTrue($names->contains('NOVA'));
         $this->assertTrue($names->contains('LUNA'));
         $this->assertFalse($names->contains('STRANGER'));
         $this->assertFalse($names->contains('HIDDEN'));
+    }
+
+    public function test_an_ordinary_aivva_never_sees_platform_npcs(): void
+    {
+        // Only the canonical demo character (named exactly "LUNA") ever
+        // sees NOVA/ATLAS -- a real user's own AIVVA, whatever they named
+        // it, stays private-by-default with zero platform-NPC clutter.
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'Tython']);
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+        $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
+        $names = collect($response->json('data.characters'))->pluck('displayName');
+        $this->assertSame(['Tython'], $names->values()->all());
+        $this->assertFalse($names->contains('NOVA'));
+        $this->assertFalse($names->contains('ATLAS'));
     }
 
     public function test_scene_reveals_only_the_accepted_meetup_partner(): void
