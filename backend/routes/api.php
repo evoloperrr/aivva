@@ -42,6 +42,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/runtime/aivvas/{aivva}/actions/request', [RuntimeActionController::class, 'request']);
     Route::post('/runtime/aivvas/{aivva}/meetups', [RuntimeActionController::class, 'requestMeetup']);
     Route::get('/runtime/aivvas/{aivva}/meetups/incoming', [RuntimeActionController::class, 'incomingMeetups']);
+    Route::get('/runtime/aivvas/{aivva}/meetups/outgoing', [RuntimeActionController::class, 'outgoingMeetups']);
     Route::post('/runtime/aivvas/{aivva}/meetups/{meetup}/respond', [RuntimeActionController::class, 'respondMeetup']);
     Route::post('/runtime/aivvas/{aivva}/meetups/{meetup}/cancel', [RuntimeActionController::class, 'cancelMeetup']);
     Route::get('/runtime/aivvas/{aivva}/actions/{runtimeAction}/trace', [RuntimeActionController::class, 'trace']);
