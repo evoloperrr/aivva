@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AivvaMeetupRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -68,5 +69,55 @@ class MeetupTest extends TestCase
             'x' => 100,
             'y' => 100,
         ])->assertForbidden();
+    }
+
+    /**
+     * Security fix, Phase 5B: this endpoint used to forcibly create a
+     * "Meetup" goal on the TARGET's own AIVVA with zero consent from the
+     * target's owner. It must now require the same ACCEPTED, unexpired
+     * AivvaMeetupRequest the consent-request flow produces before it will
+     * touch a cross-owner AIVVA at all.
+     */
+    public function test_cross_owner_meetup_is_rejected_without_an_accepted_meetup_request(): void
+    {
+        $this->seedCivilization();
+        $initiatorOwner = User::factory()->create();
+        $targetOwner = User::factory()->create();
+        $alpha = $this->makeLivingAivva($initiatorOwner, ['name' => 'ALPHA']);
+        $mira = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+
+        $this->actingAs($initiatorOwner, 'sanctum')->postJson("/api/aivvas/{$alpha->id}/meetup", [
+            'target_aivva_id' => $mira->id,
+            'name' => '8th Street Corner',
+            'x' => 500,
+            'y' => 320,
+        ])->assertForbidden();
+
+        $this->assertSame(0, $mira->fresh()->goals()->count());
+    }
+
+    public function test_cross_owner_meetup_succeeds_once_the_target_has_accepted_a_meetup_request(): void
+    {
+        $this->seedCivilization();
+        $initiatorOwner = User::factory()->create();
+        $targetOwner = User::factory()->create();
+        $alpha = $this->makeLivingAivva($initiatorOwner, ['name' => 'ALPHA']);
+        $mira = $this->makeLivingAivva($targetOwner, ['name' => 'MIRA']);
+
+        AivvaMeetupRequest::query()->create([
+            'from_aivva_id' => $alpha->id, 'to_aivva_id' => $mira->id,
+            'proposed_location_id' => 'test_social_area',
+            'status' => AivvaMeetupRequest::ACCEPTED, 'expires_at' => now()->addMinutes(15),
+        ]);
+
+        $response = $this->actingAs($initiatorOwner, 'sanctum')->postJson("/api/aivvas/{$alpha->id}/meetup", [
+            'target_aivva_id' => $mira->id,
+            'name' => '8th Street Corner',
+            'x' => 500,
+            'y' => 320,
+        ]);
+
+        $response->assertCreated();
+        $this->assertSame('Meetup', $response->json('target.goal.goal_type'));
     }
 }

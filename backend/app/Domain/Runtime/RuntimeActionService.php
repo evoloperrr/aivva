@@ -3,7 +3,7 @@
 namespace App\Domain\Runtime;
 
 use App\Enums\{ActionStatus, AivvaControlMode, AivvaStatus, RuntimeActionStatus, RuntimeActionType};
-use App\Models\{Aivva, AivvaDailyBudget, AivvaRuntimeAction, AivvaRuntimeLocation};
+use App\Models\{Aivva, AivvaDailyBudget, AivvaMeetupRequest, AivvaRuntimeAction, AivvaRuntimeLocation};
 use Illuminate\Support\Facades\{DB, Log};
 use Illuminate\Support\Str;
 
@@ -180,7 +180,27 @@ class RuntimeActionService
     private function validatePayload(Aivva $aivva, RuntimeActionType $type, array $payload): void
     {
         if ($type === RuntimeActionType::MoveTo) abort_unless(isset($payload['locationId']) && AivvaRuntimeLocation::query()->whereKey($payload['locationId'])->where('enabled', true)->exists(), 422, 'Invalid runtime location.');
-        if (in_array($type, [RuntimeActionType::FaceTarget, RuntimeActionType::Interact], true)) abort_unless(isset($payload['targetAivvaId']) && Aivva::query()->whereKey($payload['targetAivvaId'])->exists() && $payload['targetAivvaId'] !== $aivva->id, 422, 'Invalid target AIVVA.');
+        if (in_array($type, [RuntimeActionType::FaceTarget, RuntimeActionType::Interact], true)) {
+            $targetId = $payload['targetAivvaId'] ?? null;
+            abort_unless($targetId && $targetId !== $aivva->id, 422, 'Invalid target AIVVA.');
+            $target = Aivva::query()->find($targetId);
+            abort_unless($target, 422, 'Invalid target AIVVA.');
+            // The actual cross-AIVVA authorization chokepoint: this is the
+            // ONLY place every FACE_TARGET/INTERACT action passes through
+            // regardless of origin (a human's own runtime request, the
+            // Plaza demo's scripted chain, or the brain's autonomous
+            // Contact action via BrainRuntimeActionAdapter). A platform
+            // NPC (is_platform, e.g. NOVA) needs no consent — it isn't a
+            // real user. Two AIVVAs under the same owner need no consent —
+            // it's the same person. Anything else requires an ACCEPTED,
+            // unexpired AivvaMeetupRequest between the two owners' AIVVAs;
+            // without one, this now aborts instead of silently dispatching
+            // a real action against a stranger's AIVVA.
+            $consented = $target->is_platform
+                || $target->owner_id === $aivva->owner_id
+                || AivvaMeetupRequest::hasAcceptedBetween($aivva->id, $target->id);
+            abort_unless($consented, 403, 'No accepted meetup exists with this AIVVA.');
+        }
         if ($type === RuntimeActionType::Say) abort_unless(isset($payload['text']) && is_string($payload['text']) && mb_strlen(trim($payload['text'])) > 0 && mb_strlen($payload['text']) <= 500, 422, 'Invalid dialogue text.');
     }
 

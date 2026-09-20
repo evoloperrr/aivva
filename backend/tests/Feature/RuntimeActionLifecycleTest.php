@@ -4,7 +4,7 @@ namespace Tests\Feature;
 use App\Domain\Runtime\RuntimeActionService;
 use App\Domain\Runtime\BrainRuntimeActionAdapter;
 use App\Enums\{AivvaControlMode,RuntimeActionStatus,RuntimeActionType};
-use App\Models\{AivvaRuntimeLocation,Location,User};
+use App\Models\{Aivva,AivvaMeetupRequest,AivvaRuntimeLocation,Location,User};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -43,4 +43,76 @@ class RuntimeActionLifecycleTest extends TestCase
         $this->assertCount(4,array_unique(array_map(fn($action)=>$action->id,$actions)));
     }
     private function aiAivva(){ $a=$this->makeLivingAivva(User::factory()->create());$a->control_mode=AivvaControlMode::AiTwin;$a->save();return $a; }
+
+    // --- Meetup consent gating on FACE_TARGET / INTERACT (security fix) ---
+
+    public function test_interact_is_rejected_without_an_accepted_meetup(): void
+    {
+        $a = $this->aiAivva();
+        $stranger = $this->makeLivingAivva(User::factory()->create());
+        $this->expectExceptionMessage('No accepted meetup exists with this AIVVA.');
+        $this->service->create($a, RuntimeActionType::Interact, ['targetAivvaId' => $stranger->id]);
+    }
+
+    public function test_face_target_is_rejected_without_an_accepted_meetup(): void
+    {
+        $a = $this->aiAivva();
+        $stranger = $this->makeLivingAivva(User::factory()->create());
+        $this->expectExceptionMessage('No accepted meetup exists with this AIVVA.');
+        $this->service->create($a, RuntimeActionType::FaceTarget, ['targetAivvaId' => $stranger->id]);
+    }
+
+    public function test_interact_succeeds_once_a_meetup_is_accepted(): void
+    {
+        $a = $this->aiAivva();
+        $partner = $this->makeLivingAivva(User::factory()->create());
+        AivvaMeetupRequest::query()->create(['from_aivva_id' => $a->id, 'to_aivva_id' => $partner->id, 'proposed_location_id' => 'test_social_area', 'status' => AivvaMeetupRequest::ACCEPTED, 'expires_at' => now()->addMinutes(15)]);
+        $action = $this->service->create($a, RuntimeActionType::Interact, ['targetAivvaId' => $partner->id]);
+        $this->assertSame(RuntimeActionStatus::Requested, $action->status);
+    }
+
+    public function test_interact_is_rejected_once_the_accepted_meetup_expires(): void
+    {
+        $a = $this->aiAivva();
+        $partner = $this->makeLivingAivva(User::factory()->create());
+        AivvaMeetupRequest::query()->create(['from_aivva_id' => $a->id, 'to_aivva_id' => $partner->id, 'proposed_location_id' => 'test_social_area', 'status' => AivvaMeetupRequest::ACCEPTED, 'expires_at' => now()->subMinute()]);
+        $this->expectExceptionMessage('No accepted meetup exists with this AIVVA.');
+        $this->service->create($a, RuntimeActionType::Interact, ['targetAivvaId' => $partner->id]);
+    }
+
+    public function test_interact_is_rejected_when_the_meetup_was_only_declined(): void
+    {
+        $a = $this->aiAivva();
+        $partner = $this->makeLivingAivva(User::factory()->create());
+        AivvaMeetupRequest::query()->create(['from_aivva_id' => $a->id, 'to_aivva_id' => $partner->id, 'proposed_location_id' => 'test_social_area', 'status' => AivvaMeetupRequest::DECLINED, 'expires_at' => now()->addMinutes(15)]);
+        $this->expectExceptionMessage('No accepted meetup exists with this AIVVA.');
+        $this->service->create($a, RuntimeActionType::Interact, ['targetAivvaId' => $partner->id]);
+    }
+
+    public function test_interact_needs_no_meetup_with_a_platform_aivva(): void
+    {
+        $a = $this->aiAivva();
+        $nova = Aivva::query()->where('is_platform', true)->firstOrFail();
+        $action = $this->service->create($a, RuntimeActionType::Interact, ['targetAivvaId' => $nova->id]);
+        $this->assertSame(RuntimeActionStatus::Requested, $action->status);
+    }
+
+    public function test_interact_needs_no_meetup_between_two_aivvas_under_the_same_owner(): void
+    {
+        $owner = User::factory()->create();
+        $one = $this->makeLivingAivva($owner, ['name' => 'ALPHA']);
+        $two = $this->makeLivingAivva($owner, ['name' => 'BETA']);
+        $one->control_mode = AivvaControlMode::AiTwin; $one->save();
+        $action = $this->service->create($one, RuntimeActionType::Interact, ['targetAivvaId' => $two->id]);
+        $this->assertSame(RuntimeActionStatus::Requested, $action->status);
+    }
+
+    public function test_brain_contact_action_is_rejected_without_an_accepted_meetup(): void
+    {
+        $a = $this->aiAivva();
+        $stranger = $this->makeLivingAivva(User::factory()->create());
+        $source = $a->actions()->create(['type' => 'CONTACT', 'payload' => ['target_aivva_id' => $stranger->id], 'status' => 'PENDING', 'initiated_by' => 'AI', 'idempotency_key' => 'brain-contact-forbidden']);
+        $this->expectExceptionMessage('No accepted meetup exists with this AIVVA.');
+        app(BrainRuntimeActionAdapter::class)->dispatch($a, $source);
+    }
 }

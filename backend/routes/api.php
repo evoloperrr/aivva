@@ -32,6 +32,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/aivvas', [AivvaController::class, 'store']);
     Route::get('/aivvas/{aivva}', [AivvaController::class, 'show']);
     Route::get('/runtime/aivvas/{aivva}', [AivvaRuntimeController::class, 'show']);
+    Route::get('/runtime/lookup/xentoz-user/{xentozUserId}', [AivvaRuntimeController::class, 'resolveByXentozUser']);
     Route::get('/runtime/health', [RuntimeActionController::class, 'health']);
     Route::get('/runtime/aivvas/{aivva}/scene', [AivvaRuntimeController::class, 'scene']);
     Route::patch('/runtime/aivvas/{aivva}/control-mode', [AivvaRuntimeController::class, 'controlMode']);

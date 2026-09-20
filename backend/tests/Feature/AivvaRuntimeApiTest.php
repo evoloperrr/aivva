@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\AivvaControlMode;
+use App\Models\AivvaMeetupRequest;
 use App\Models\User;
 use App\Models\XentozIdentityLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -63,18 +64,104 @@ class AivvaRuntimeApiTest extends TestCase
         $this->getJson('/api/runtime/aivvas/'.$aivva->id)->assertForbidden();
     }
 
-    public function test_scene_registry_exposes_only_owned_or_platform_visible_aivvas(): void
+    /**
+     * Owner decision, Phase 5B: the Plaza is private by default — before
+     * any accepted meetup, an owner sees only their own AIVVA, never a
+     * platform NPC (NOVA), and never an unrelated real AIVVA even if it
+     * would otherwise be "visible on the map." This supersedes the old
+     * "platform bots are always ambient scenery" test, which is no longer
+     * the intended behavior once cross-owner visibility became
+     * consent-gated (see AivvaRuntimeController::scene()).
+     */
+    public function test_scene_is_private_to_the_owner_before_any_accepted_meetup(): void
     {
         $owner = User::factory()->create();
         $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $strangerOwner = User::factory()->create();
+        $this->makeLivingAivva($strangerOwner, ['name' => 'STRANGER']);
         $hiddenOwner = User::factory()->create();
         $this->makeLivingAivva($hiddenOwner, ['name' => 'HIDDEN', 'visible_on_map' => false]);
         Sanctum::actingAs($owner, ['aivva:runtime']);
         $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
         $names = collect($response->json('data.characters'))->pluck('displayName');
-        $this->assertTrue($names->contains('LUNA'));
-        $this->assertTrue($names->contains('NOVA'));
+        $this->assertSame(['LUNA'], $names->values()->all());
+        $this->assertFalse($names->contains('NOVA'));
+        $this->assertFalse($names->contains('STRANGER'));
         $this->assertFalse($names->contains('HIDDEN'));
+    }
+
+    public function test_scene_reveals_only_the_accepted_meetup_partner(): void
+    {
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $partnerOwner = User::factory()->create();
+        $partner = $this->makeLivingAivva($partnerOwner, ['name' => 'PARTNER']);
+        $unrelatedOwner = User::factory()->create();
+        $this->makeLivingAivva($unrelatedOwner, ['name' => 'UNRELATED']);
+
+        AivvaMeetupRequest::query()->create([
+            'from_aivva_id' => $aivva->id, 'to_aivva_id' => $partner->id,
+            'proposed_location_id' => 'test_social_area',
+            'status' => AivvaMeetupRequest::ACCEPTED, 'expires_at' => now()->addMinutes(15),
+        ]);
+
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+        $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
+        $names = collect($response->json('data.characters'))->pluck('displayName')->sort()->values();
+        $this->assertSame(['LUNA', 'PARTNER'], $names->all());
+        $this->assertFalse($names->contains('UNRELATED'));
+    }
+
+    public function test_scene_hides_a_partner_once_the_meetup_expires(): void
+    {
+        $owner = User::factory()->create();
+        $aivva = $this->makeLivingAivva($owner, ['name' => 'LUNA']);
+        $partnerOwner = User::factory()->create();
+        $partner = $this->makeLivingAivva($partnerOwner, ['name' => 'PARTNER']);
+
+        AivvaMeetupRequest::query()->create([
+            'from_aivva_id' => $aivva->id, 'to_aivva_id' => $partner->id,
+            'proposed_location_id' => 'test_social_area',
+            'status' => AivvaMeetupRequest::ACCEPTED, 'expires_at' => now()->subMinute(),
+        ]);
+
+        Sanctum::actingAs($owner, ['aivva:runtime']);
+        $response = $this->getJson('/api/runtime/aivvas/'.$aivva->id.'/scene')->assertOk();
+        $names = collect($response->json('data.characters'))->pluck('displayName');
+        $this->assertSame(['LUNA'], $names->values()->all());
+    }
+
+    public function test_resolves_a_xentoz_user_id_to_their_aivva_for_the_meetup_ui(): void
+    {
+        $caller = User::factory()->create();
+        $this->makeLivingAivva($caller, ['name' => 'CALLER']);
+        $targetOwner = User::factory()->create();
+        $target = $this->makeLivingAivva($targetOwner, ['name' => 'KNZ']);
+        $this->link($targetOwner, 'xentoz-knzvalle-id');
+
+        Sanctum::actingAs($caller, ['aivva:runtime']);
+        $response = $this->getJson('/api/runtime/lookup/xentoz-user/xentoz-knzvalle-id')->assertOk();
+        $response->assertJsonPath('data.aivvaId', $target->id)->assertJsonPath('data.displayName', 'KNZ');
+        // Only id + name — never wallet, location, or personality data.
+        $this->assertSame(['aivvaId', 'displayName'], array_keys($response->json('data')));
+    }
+
+    public function test_resolving_an_unlinked_xentoz_user_id_404s(): void
+    {
+        $caller = User::factory()->create();
+        $this->makeLivingAivva($caller);
+        Sanctum::actingAs($caller, ['aivva:runtime']);
+        $this->getJson('/api/runtime/lookup/xentoz-user/no-such-xentoz-user')->assertNotFound();
+    }
+
+    public function test_resolving_a_linked_user_with_no_aivva_yet_404s(): void
+    {
+        $caller = User::factory()->create();
+        $this->makeLivingAivva($caller);
+        $targetOwner = User::factory()->create(); // no AIVVA created for them
+        $this->link($targetOwner, 'xentoz-no-aivva-yet');
+        Sanctum::actingAs($caller, ['aivva:runtime']);
+        $this->getJson('/api/runtime/lookup/xentoz-user/xentoz-no-aivva-yet')->assertNotFound();
     }
 
     public function test_runtime_action_routes_bind_the_owned_aivva_and_start_the_server_demo(): void

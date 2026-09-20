@@ -15,6 +15,7 @@ use App\Enums\MemoryCategory;
 use App\Models\Aivva;
 use App\Models\AivvaActivityLog;
 use App\Models\AivvaGoal;
+use App\Models\AivvaMeetupRequest;
 use App\Models\District;
 use App\Models\Location;
 use App\Models\User;
@@ -141,6 +142,23 @@ class AivvaService
      */
     public function createMeetup(Aivva $initiator, Aivva $target, string $name, float $x, float $y): array
     {
+        // Owner decision (security fix): this endpoint used to forcibly
+        // create a "Meetup" goal on the TARGET's own AIVVA too (see the
+        // foreach below) with zero consent from the target's owner — a
+        // real cross-owner action taken against someone's AIVVA without
+        // their knowledge. Two AIVVAs under the same owner (picking a spot
+        // for their own characters) need no consent; anything else now
+        // requires the same ACCEPTED, unexpired AivvaMeetupRequest the new
+        // consent-request flow produces. This mirrors the same gate now
+        // enforced in RuntimeActionService::validatePayload for the actual
+        // runtime INTERACT dispatch, so the goal is never even created on
+        // a non-consenting target's AIVVA in the first place.
+        abort_unless(
+            $initiator->owner_id === $target->owner_id || AivvaMeetupRequest::hasAcceptedBetween($initiator->id, $target->id),
+            403,
+            'No accepted meetup exists with this AIVVA.',
+        );
+
         $district = District::query()->firstOrCreate(
             ['slug' => 'custom-spots'],
             [

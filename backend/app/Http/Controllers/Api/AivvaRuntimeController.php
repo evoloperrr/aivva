@@ -6,6 +6,7 @@ use App\Enums\AivvaControlMode;
 use App\Http\Controllers\Controller;
 use App\Models\Aivva;
 use App\Models\AivvaMeetupRequest;
+use App\Models\XentozIdentityLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -68,6 +69,27 @@ class AivvaRuntimeController extends Controller
                 'version' => $character->state_version,
             ])->values();
         return response()->json(['data' => ['characters' => $characters]]);
+    }
+
+    /**
+     * Phase 5B meetup UI: resolves a Xentoz user id (already looked up by
+     * Xentoz itself via an exact username match — see the BFF route this
+     * backs) to that user's AIVVA, so the meetup-request UI can turn
+     * "@knzvalle" into a concrete targetAivvaId without either side ever
+     * exposing a global AIVVA directory. Deliberately minimal, non-
+     * sensitive response (id + display name only) — no wallet, location,
+     * or personality data, and no ownership check tying it to the CALLER's
+     * own AIVVA, since this is just public-profile-equivalent lookup, the
+     * same trust tier as Xentoz's own findByUsername.
+     */
+    public function resolveByXentozUser(Request $request, string $xentozUserId): JsonResponse
+    {
+        abort_unless(config('aivva.runtime.enabled'), 503, 'AIVVA runtime is disabled.');
+        abort_unless($request->user()?->tokenCan('aivva:runtime'), 403, 'Runtime scope required.');
+        $link = XentozIdentityLink::query()->where('xentoz_user_id', $xentozUserId)->first();
+        $aivva = $link?->user?->aivvas()->first();
+        abort_unless($aivva, 404, 'That Xentoz member has not created an AIVVA yet.');
+        return response()->json(['data' => ['aivvaId' => $aivva->id, 'displayName' => $aivva->name]]);
     }
 
     private function authorizeRuntime(Request $request, Aivva $aivva): void
