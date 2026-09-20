@@ -52,8 +52,7 @@ class AivvaRuntimeController extends Controller
     public function scene(Request $request, Aivva $aivva): JsonResponse
     {
         $this->authorizeRuntime($request, $aivva);
-        $characters = Aivva::query()->with('profile')->where('visible_on_map', true)
-            ->where('is_platform', false)
+        $characters = Aivva::query()->with('profile')->whereKey($aivva->id)
             ->limit(12)->get()->map(fn (Aivva $character) => [
                 'id' => $character->id,
                 'displayName' => $character->name,
